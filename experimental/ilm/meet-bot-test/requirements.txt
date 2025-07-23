@@ -1,0 +1,4 @@
+# For local development, install Playwright and browsers:
+#   pip install playwright
+#   playwright install
+playwright 
