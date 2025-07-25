@@ -5,7 +5,9 @@ services:
     volumes:
       - ./:/app
     working_dir: /app
-    command: ["python", "bot.py"]
-    # Uncomment the following line if you want to run the container with a display (for non-headless mode)
-    # environment:
-    #   - DISPLAY 
+    environment:
+      - GOOGLE_USERNAME
+      - GOOGLE_PASSWORD
+      - SERVER_ADDRESS
+    command: ["node", "bot.js", "https://meet.google.com/your-meet-link"]
+    # To override the Meet link, set it in the command or use docker-compose run 

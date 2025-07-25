@@ -1,22 +1,42 @@
-FROM python:3.11-slim
+FROM node:20-slim
 
-# Install system dependencies
+# Install necessary dependencies for Puppeteer
 RUN apt-get update && apt-get install -y \
     wget \
-    curl \
-    gnupg \
+    ca-certificates \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    xdg-utils \
+    --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright and browsers
-RUN pip install --no-cache-dir playwright && playwright install --with-deps
+# Add user for running Puppeteer
+RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
+    && mkdir -p /home/pptruser/Downloads && chown -R pptruser:pptruser /home/pptruser
 
-# Set workdir
 WORKDIR /app
 
-# Copy requirements and source
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Install app dependencies
+COPY package.json package-lock.json* ./
+RUN npm install --omit=dev
+
+# Copy source code
 COPY . .
 
-# Default command
-CMD ["python", "bot.py"] 
+# Run everything after as non-privileged user
+USER pptruser
+
+CMD ["node", "bot.js"] 

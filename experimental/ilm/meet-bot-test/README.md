@@ -5,13 +5,14 @@ This will be used to test live transcription of the audio stream.
 
 ## Approach
 
-We will use Playwright to automate joining a Google Meet. Once joined, we will inject JavaScript into the page to access the media elements (such as the video or audio elements) and use the MediaRecorder API to capture the audio stream. The recorded audio chunks will be sent to a local server for live transcription (e.g., using Whisper) and storage in a database for later use. This approach is inspired by the open-source Vexa project, which uses similar techniques to access and process media streams directly from the browser DOM, without requiring a browser extension.
+We will use Node.js with Puppeteer and the `puppeteer-extra-plugin-stealth` to automate joining a Google Meet. The bot will log in as a real user, join the meeting, and (in future steps) capture the audio stream for live transcription. This approach uses advanced anti-bot detection evasion to allow Google login.
 
 ### Inputs
 
-- A Google Meet link
-- A local server address to send the audio stream to
-- Credentials to join the Google Meet
+- A Google Meet link (passed as a command-line argument)
+- A local server address to send the audio stream to (environment variable)
+- Google credentials (username and password, environment variables)
+- **NEW**: TOTP 2FA support using MFA secret key
 
 ### Outputs
 
@@ -19,46 +20,69 @@ We will use Playwright to automate joining a Google Meet. Once joined, we will i
 
 ---
 
-## Running the Service Locally
+## Setup & Usage
 
-You can run the bot locally for development and debugging. This allows you to see the browser window and interact with it if needed.
+### 1. Install dependencies
 
-1. **Create and activate a Python virtual environment:**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
+```bash
+npm install
+```
 
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 2. Set environment variables
 
-3. **Install Playwright browsers:**
-   ```bash
-   playwright install
-   ```
+**Basic Configuration:**
+- `GOOGLE_USERNAME` - Your Google account email
+- `GOOGLE_PASSWORD` - Your Google account password
+- `SERVER_ADDRESS` - The local server address to send audio to
 
-4. **Run the bot with a visible browser:**
-   ```bash
-   HEADLESS=false python bot.py
-   ```
-   This will launch the browser in non-headless mode so you can see what the bot is doing.
+**2FA Configuration (Optional):**
+- `MFA_SECRET` - Your base32-encoded TOTP secret key for Google Authenticator
 
-5. **To exit:**
-   - Press Enter in the terminal when prompted to close the browser and end the script.
+You can set these in your shell or in a `.env` file (if using dotenv).
+
+### 3. Setting up TOTP 2FA
+
+If your Google account has 2FA enabled with Google Authenticator (TOTP), you can automate the 2FA process:
+
+1. **Get your TOTP secret:**
+   - When you set up Google Authenticator, Google shows a QR code
+   - Use a QR decoder to extract the `otpauth://` URI
+   - The secret is the `secret=` parameter in the URI
+   
+   Example URI: `otpauth://totp/Example:bot@gmail.com?secret=JBSWY3DPEHPK3PXP&issuer=Example`
+   Secret: `JBSWY3DPEHPK3PXP`
+
+2. **Store the secret securely:**
+   - Add it to your `.env` file: `MFA_SECRET=JBSWY3DPEHPK3PXP`
+   - Or set it as an environment variable
+
+3. **The bot will automatically:**
+   - Detect when 2FA is required
+   - Generate the current TOTP code
+   - Fill it in automatically
+   - Complete the authentication
+
+### 4. Run the bot
+
+**Without 2FA:**
+```bash
+GOOGLE_USERNAME=your@email.com GOOGLE_PASSWORD=yourpassword SERVER_ADDRESS=http://localhost:5000 node bot.js https://meet.google.com/abc-defg-hij
+```
+
+**With TOTP 2FA:**
+```bash
+GOOGLE_USERNAME=your@email.com GOOGLE_PASSWORD=yourpassword SERVER_ADDRESS=http://localhost:5000 MFA_SECRET=JBSWY3DPEHPK3PXP node bot.js https://meet.google.com/abc-defg-hij
+```
 
 ---
 
 ## Running in Docker
 
-You can run the bot in a containerized environment using Docker Compose. This setup is useful for consistent deployments and for running the bot in headless mode.
-
 1. **Build and start the service:**
    ```bash
    docker-compose up --build
    ```
-   This will build the Docker image (if needed) and start the bot service.
+   This will build the Docker image and start the bot service.
 
 2. **Code hot-reloading:**
    - The `docker-compose.yml` file mounts your local directory into the container at `/app`, so any code changes you make will be reflected immediately without needing to rebuild the image.
@@ -70,9 +94,43 @@ You can run the bot in a containerized environment using Docker Compose. This se
      docker-compose down
      ```
 
-4. **Headless mode:**
-   - By default, the bot runs in headless mode inside Docker. If you want to run with a visible browser, you would need to set up X11 forwarding or a VNC server, which is advanced and not required for most use cases.
+---
+
+## 2FA Troubleshooting
+
+### Common Issues
+
+1. **"MFA_SECRET not provided"**
+   - Set the `MFA_SECRET` environment variable with your base32-encoded secret
+   - Make sure the secret is correct (no extra spaces or characters)
+
+2. **"Failed to generate TOTP code"**
+   - Verify your MFA secret is valid base32-encoded
+   - Check that the secret matches what Google provided
+
+3. **"No 2FA challenge detected"**
+   - Google might be using a different 2FA method (SMS, backup codes, etc.)
+   - TOTP only works with Google Authenticator-style 2FA
+
+4. **"Navigation timeout"**
+   - This is normal when 2FA is required
+   - The bot will automatically detect and handle the 2FA challenge
+
+### Security Considerations
+
+- Store your MFA secret securely in environment variables
+- Don't commit the secret to version control
+- Consider using a dedicated Google account for bot testing
+- The TOTP code changes every 30 seconds
 
 ---
+
+## Notes
+
+- This project now uses Node.js and Puppeteer with stealth plugin for best compatibility with Google login.
+- **NEW**: TOTP 2FA support is now available using the `otplib` library.
+- The bot can automatically handle Google Authenticator-style 2FA challenges.
+- If you encounter other security challenges (SMS, backup codes, hardware keys, etc.), you may need to handle them manually.
+- This approach works with Okta SSO as long as the final authentication step uses TOTP.
 
 
