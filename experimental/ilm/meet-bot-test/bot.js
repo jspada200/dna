@@ -46,7 +46,7 @@ async function handle2FAChallenge(page) {
   try {
     await page.waitForSelector('input[name="credentials.passcode"]', {
       state: 'visible',
-      timeout: 10000,
+      timeout: 2000,
     });
 
     console.log('[INFO] 2FA challenge detected, generating TOTP code...');
@@ -120,16 +120,34 @@ async function joinGoogleMeet(page, meetLink) {
   console.log(`[INFO] Navigating to Google Meet: ${meetLink}`);
   await page.goto(meetLink, { waitUntil: 'networkidle' });
   // Wait for the join button and click it
+
+  // Look for and click "Continue without microphone and camera" button
   try {
     await page.waitForSelector(
-      'button[aria-label*="Join now"], button[jsname="Qx7uuf"]',
-      { state: 'visible', timeout: 20000 }
+      'span:has-text("Continue without microphone and camera")',
+      { state: 'visible', timeout: 10000 }
     );
-    await page.click('button[aria-label*="Join now"], button[jsname="Qx7uuf"]');
+    await page.click('span:has-text("Continue without microphone and camera")');
+    console.log(
+      '[INFO] Clicked "Continue without microphone and camera" button.'
+    );
+  } catch (e) {
+    console.log(
+      '[INFO] "Continue without microphone and camera" button not found or already handled.'
+    );
+  }
+
+  // Wait for the join button and click it
+  try {
+    await page.waitForSelector('span:has-text("Join now")', {
+      state: 'visible',
+      timeout: 20000,
+    });
+    await page.click('span:has-text("Join now")');
     console.log('[INFO] Joined the Google Meet.');
   } catch (e) {
     console.warn(
-      '[WARN] Could not find or click the Join button automatically. You may need to join manually.'
+      '[WARN] Could not find or click the Join button automatically. Will move on to "Join now".'
     );
   }
 }
