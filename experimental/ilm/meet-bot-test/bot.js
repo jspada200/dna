@@ -15,6 +15,11 @@ const SERVER_ADDRESS = process.env.SERVER_ADDRESS;
 const MFA_SECRET = process.env.MFA_SECRET;
 const MEET_LINK = process.argv[2];
 
+// Global variables to track browser and page instances
+let browser = null;
+let page = null;
+let isCleaningUp = false; // Flag to prevent multiple cleanup calls
+
 if (!GOOGLE_USERNAME || !GOOGLE_PASSWORD || !SERVER_ADDRESS || !MEET_LINK) {
   console.error('[ERROR] Missing required inputs.');
   console.error(
@@ -152,14 +157,109 @@ async function joinGoogleMeet(page, meetLink) {
   }
 }
 
+async function leaveGoogleMeet(page) {
+  try {
+    console.log('[INFO] Attempting to leave Google Meet...');
+
+    // Try multiple selectors for the leave call button
+    const leaveSelectors = [
+      '',
+      'span:has-text("Leave call")',
+      'span:has-text("Leave meeting")',
+      'button[aria-label*="Leave call"]',
+      'button[aria-label*="Leave meeting"]',
+      '[data-mdc-dialog-action="leave"]',
+      'button:has-text("Leave")',
+    ];
+
+    for (const selector of leaveSelectors) {
+      try {
+        await page.waitForSelector(selector, {
+          state: 'visible',
+          timeout: 2000,
+        });
+        await page.click(selector);
+        console.log(
+          `[INFO] Successfully clicked leave button with selector: ${selector}`
+        );
+
+        // Wait a moment for the action to complete
+        await page.waitForTimeout(2000);
+        return true;
+      } catch (e) {
+        // Continue to next selector
+        continue;
+      }
+    }
+
+    // If no leave button found, try to close the tab/browser
+    console.log('[INFO] No leave button found, closing browser...');
+    return false;
+  } catch (error) {
+    console.error('[ERROR] Failed to leave Google Meet:', error.message);
+    return false;
+  }
+}
+
+async function cleanup() {
+  if (isCleaningUp) {
+    console.log('[INFO] Cleanup already in progress, skipping...');
+    return;
+  }
+
+  isCleaningUp = true;
+  console.log('[INFO] Cleaning up...');
+
+  try {
+    if (page) {
+      await leaveGoogleMeet(page);
+    }
+  } catch (error) {
+    console.error('[ERROR] Error during cleanup:', error.message);
+  } finally {
+    if (browser) {
+      await browser.close();
+      console.log('[INFO] Browser closed.');
+    }
+    process.exit(0);
+  }
+}
+
+// Handle process termination signals
+process.on('SIGINT', async () => {
+  console.log('\n[INFO] Received SIGINT, cleaning up...');
+  await cleanup();
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n[INFO] Received SIGTERM, cleaning up...');
+  await cleanup();
+});
+
+process.on('SIGQUIT', async () => {
+  console.log('\n[INFO] Received SIGQUIT, cleaning up...');
+  await cleanup();
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', async (error) => {
+  console.error('[ERROR] Uncaught exception:', error);
+  await cleanup();
+});
+
+process.on('unhandledRejection', async (reason, promise) => {
+  console.error('[ERROR] Unhandled rejection at:', promise, 'reason:', reason);
+  await cleanup();
+});
+
 (async () => {
-  const browser = await chromium.launch({ headless: false });
+  browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     userAgent:
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     viewport: { width: 1280, height: 800 },
   });
-  const page = await context.newPage();
+  page = await context.newPage();
 
   try {
     await loginToGoogle(page, GOOGLE_USERNAME, GOOGLE_PASSWORD);
@@ -171,8 +271,6 @@ async function joinGoogleMeet(page, meetLink) {
   } catch (err) {
     console.error('[ERROR]', err);
     await page.screenshot({ path: 'error.png' });
-  } finally {
-    // Do not close the browser to keep the Meet session alive
-    // await browser.close();
+    await cleanup();
   }
 })();

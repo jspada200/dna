@@ -127,10 +127,7 @@ GOOGLE_USERNAME=your@email.com GOOGLE_PASSWORD=yourpassword SERVER_ADDRESS=http:
 
 ## Notes
 
-- This project now uses Node.js and Puppeteer with stealth plugin for best compatibility with Google login.
-- **NEW**: TOTP 2FA support is now available using the `otplib` library.
+- TOTP 2FA support is now available using the `otplib` library.
 - The bot can automatically handle Google Authenticator-style 2FA challenges.
 - If you encounter other security challenges (SMS, backup codes, hardware keys, etc.), you may need to handle them manually.
 - This approach works with Okta SSO as long as the final authentication step uses TOTP.
-
-
