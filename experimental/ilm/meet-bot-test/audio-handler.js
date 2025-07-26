@@ -105,10 +105,9 @@ export async function setupAudioCapture(page, serverAddress) {
             console.log(
               '[BROWSER] Creating MediaRecorder with audio stream...'
             );
-            // Create MediaRecorder
+            // Create MediaRecorder (using same format as successful popup.js)
             window.mediaRecorder = new MediaRecorder(audioStream, {
-              mimeType: 'audio/webm;codecs=opus',
-              audioBitsPerSecond: 16000,
+              mimeType: 'audio/webm',
             });
 
             window.audioChunks = [];
@@ -122,20 +121,34 @@ export async function setupAudioCapture(page, serverAddress) {
                   '[BROWSER] Audio chunk received, size:',
                   event.data.size
                 );
-
-                // Send chunk to server
-                window.sendAudioChunkToServer(event.data);
               }
             };
 
             // Handle recording stop
-            window.mediaRecorder.onstop = () => {
+            window.mediaRecorder.onstop = async () => {
               console.log('[BROWSER] Audio recording stopped');
               window.isRecording = false;
+
+              // Combine all recorded chunks into a single Blob (like popup.js)
+              if (window.audioChunks.length > 0) {
+                const audioBlob = new Blob(window.audioChunks, {
+                  type: 'audio/webm',
+                });
+                console.log(
+                  '[BROWSER] Combined audio chunks into blob, size:',
+                  audioBlob.size
+                );
+
+                // Send the combined audio blob to server
+                await window.sendAudioChunkToServer(audioBlob);
+
+                // Clear chunks for next recording
+                window.audioChunks = [];
+              }
             };
 
             // Start recording
-            window.mediaRecorder.start(5000); // Collect data every 5 seconds
+            window.mediaRecorder.start(1000); // Collect data every 1 second
             console.log('[BROWSER] Audio recording started');
 
             return true;
@@ -211,47 +224,47 @@ export async function setupAudioCapture(page, serverAddress) {
         }, 1000);
       };
 
+      // Function to restart recording cycle
+      window.restartRecording = () => {
+        if (window.isRecording) {
+          console.log('[BROWSER] Stopping current recording to restart...');
+          window.stopAudioCapture();
+        }
+        setTimeout(() => {
+          console.log('[BROWSER] Starting new recording cycle...');
+          window.startAudioCapture();
+        }, 1000);
+      };
+
       // Function to send audio chunk to server
       window.sendAudioChunkToServer = async (audioChunk) => {
         try {
           console.log('[BROWSER] Sending audio chunk to server...');
 
-          // Convert blob to base64
-          const reader = new FileReader();
-          reader.onload = async () => {
-            const base64Data = reader.result.split(',')[1]; // Remove data URL prefix
+          // Create FormData with the audio blob (same format as popup.js)
+          const formData = new FormData();
+          formData.append('audio', audioChunk, 'chunk.wav');
 
-            try {
-              // Send to server via fetch
-              const response = await fetch(`${serverAddress}/transcribe`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  audio: base64Data,
-                  timestamp: Date.now(),
-                }),
-              });
+          try {
+            // Send to server via fetch using FormData
+            const response = await fetch(`${serverAddress}/transcribe`, {
+              method: 'POST',
+              body: formData,
+            });
 
-              if (response.ok) {
-                const result = await response.json();
-                console.log('[BROWSER] Whisper response:', result);
-              } else {
-                console.log(
-                  '[BROWSER] Server error:',
-                  response.status,
-                  response.statusText
-                );
-              }
-            } catch (error) {
+            if (response.ok) {
+              const result = await response.json();
+              console.log('[BROWSER] Whisper response:', result);
+            } else {
               console.log(
-                '[BROWSER] Failed to send audio chunk:',
-                error.message
+                '[BROWSER] Server error:',
+                response.status,
+                response.statusText
               );
             }
-          };
-          reader.readAsDataURL(audioChunk);
+          } catch (error) {
+            console.log('[BROWSER] Failed to send audio chunk:', error.message);
+          }
         } catch (error) {
           console.error('[BROWSER] Error sending audio chunk:', error);
         }
@@ -310,46 +323,21 @@ export async function stopAudioCapture(page) {
 }
 
 export function setupPeriodicChecks(page) {
-  // Set up periodic check for new audio streams
+  // Set up periodic restart of recording (every 5 seconds like popup.js)
   setInterval(async () => {
     try {
       await page.evaluate(() => {
         if (
-          window.checkForNewAudioStreams &&
-          typeof window.checkForNewAudioStreams === 'function'
+          window.restartRecording &&
+          typeof window.restartRecording === 'function'
         ) {
-          window.checkForNewAudioStreams();
+          window.restartRecording();
         }
       });
     } catch (error) {
-      console.log('[INFO] Error checking for audio streams:', error.message);
+      console.log('[INFO] Error restarting recording:', error.message);
     }
-  }, 5000); // Check every 5 seconds
-
-  // Set up periodic retry if not recording
-  setInterval(async () => {
-    try {
-      await page.evaluate(() => {
-        if (
-          window.logAudioStatus &&
-          typeof window.logAudioStatus === 'function'
-        ) {
-          window.logAudioStatus();
-        }
-        // If not recording, try to start again
-        if (
-          !window.isRecording &&
-          window.retryAudioCapture &&
-          typeof window.retryAudioCapture === 'function'
-        ) {
-          console.log('[BROWSER] Not recording, attempting retry...');
-          window.retryAudioCapture();
-        }
-      });
-    } catch (error) {
-      console.log('[INFO] Error in retry check:', error.message);
-    }
-  }, 10000); // Check every 10 seconds
+  }, 5000); // Restart every 5 seconds
 
   // Set up periodic status logging
   setInterval(async () => {
