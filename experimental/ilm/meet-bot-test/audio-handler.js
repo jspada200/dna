@@ -2,7 +2,6 @@ export async function setupAudioCapture(page, serverAddress) {
   console.log('[INFO] Setting up audio capture...');
 
   try {
-    // Inject JavaScript to capture audio from the page
     await page.evaluate((serverAddress) => {
       // Store MediaRecorder globally so we can access it from Node.js
       window.mediaRecorder = null;
