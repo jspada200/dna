@@ -16,7 +16,7 @@ export async function setupAudioCapture(page, serverAddress) {
 
           let audioStream = null;
 
-          // Method 1: Try to capture from existing media elements (Google Meet audio/video)
+          // Try to capture from existing media elements (Google Meet audio/video)
           const audioElements = document.querySelectorAll('audio, video');
           console.log(
             '[BROWSER] Found',
@@ -42,62 +42,6 @@ export async function setupAudioCapture(page, serverAddress) {
                 'audio tracks'
               );
               break;
-            }
-          }
-
-          // If no audio stream found, try to capture system audio
-          if (!audioStream) {
-            try {
-              // Request system audio capture (this may require user permission)
-              audioStream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                  echoCancellation: false,
-                  noiseSuppression: false,
-                  autoGainControl: false,
-                },
-              });
-              console.log('[BROWSER] Captured system audio stream');
-            } catch (error) {
-              console.log(
-                '[BROWSER] Could not capture system audio:',
-                error.message
-              );
-            }
-          }
-
-          // Method 3: Try to capture tab audio using getDisplayMedia
-          if (!audioStream) {
-            try {
-              const displayStream =
-                await navigator.mediaDevices.getDisplayMedia({
-                  audio: true,
-                  video: false,
-                });
-              audioStream = displayStream;
-              console.log('[BROWSER] Captured tab audio via getDisplayMedia');
-            } catch (error) {
-              console.log(
-                '[BROWSER] Could not capture tab audio:',
-                error.message
-              );
-            }
-          }
-
-          // Method 4: Try to capture from audio context as fallback
-          if (!audioStream) {
-            try {
-              const audioContext = new (window.AudioContext ||
-                window.webkitAudioContext)();
-              const destination = audioContext.createMediaStreamDestination();
-
-              // This is a fallback - may not work for all scenarios
-              console.log('[BROWSER] Attempting to capture from audio context');
-              audioStream = destination.stream;
-            } catch (error) {
-              console.log(
-                '[BROWSER] Could not create audio context:',
-                error.message
-              );
             }
           }
 
