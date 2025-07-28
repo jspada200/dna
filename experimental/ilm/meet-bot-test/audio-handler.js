@@ -337,7 +337,7 @@ export function setupPeriodicChecks(page) {
     } catch (error) {
       console.log('[INFO] Error restarting recording:', error.message);
     }
-  }, 5000); // Restart every 5 seconds
+  }, 10000); // Restart every 10 seconds
 
   // Set up periodic status logging
   setInterval(async () => {

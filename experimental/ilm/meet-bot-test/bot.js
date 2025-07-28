@@ -28,8 +28,6 @@ const MEET_LINK = process.argv[2];
 let browser = null;
 let page = null;
 let isCleaningUp = false; // Flag to prevent multiple cleanup calls
-let mediaRecorder = null; // MediaRecorder instance
-let audioChunks = []; // Array to store audio chunks
 
 if (!GOOGLE_USERNAME || !GOOGLE_PASSWORD || !SERVER_ADDRESS || !MEET_LINK) {
   console.error('[ERROR] Missing required inputs.');
@@ -38,10 +36,6 @@ if (!GOOGLE_USERNAME || !GOOGLE_PASSWORD || !SERVER_ADDRESS || !MEET_LINK) {
   );
   process.exit(1);
 }
-
-
-
-
 
 async function cleanup() {
   if (isCleaningUp) {
