@@ -11,7 +11,6 @@ dependencies = [
     "pytest-django",
     "dj-database-url",
     "djangorestframework",
-    "python-dotenv",
     "black",
     "isort"
 ]
