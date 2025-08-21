@@ -8,7 +8,12 @@ dependencies = [
     "psycopg[binary]",
     "pytest",
     "pytest-cov",
-    "dj-database-url"
+    "pytest-django",
+    "dj-database-url",
+    "djangorestframework",
+    "python-dotenv",
+    "black",
+    "isort"
 ]
 
 [tool.uv]

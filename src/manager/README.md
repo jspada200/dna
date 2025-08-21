@@ -1,6 +1,6 @@
-# Django Docker + uv + Docker Compose Project
+# Manager Service
 
-This project is a production-ready Django application using Docker, uv for Python package management, and docker-compose for orchestration.
+This service is responsible for managing the overall workflow of the Dailies Notes Assistant (DNA) system. This includes spawning workers, managing the lifecycle of dailies sessions, and storing our dailies artifacts.
 
 ## Features
 - Django (latest stable)
@@ -11,24 +11,34 @@ This project is a production-ready Django application using Docker, uv for Pytho
 
 ## Quickstart
 
+Common commands are abstracted into the Makefile.
+
+
 1. **Build and start services:**
    ```sh
-   docker-compose up --build
+   make up
    ```
 
-2. **Create Django superuser:**
+2. **Running migrations:**
    ```sh
-   docker-compose exec web python manage.py createsuperuser
+   make migrate
    ```
 
-3. **Access the app:**
+3. **Create superuser:**
+   ```sh
+   make createsuperuser
+   ```
+
+4. **Access the app:**
    - Django: http://localhost:8000
 
 ## Structure
 - `Dockerfile` — App image
 - `docker-compose.yml` — Service orchestration
+- `docker-compose.local.yml` — Local development configuration
 - `pyproject.toml` — Python dependencies (managed by uv)
 - `src/` — Django project code
+- `.env` - Environment variables: Not in repo, copy the sample and update with your values.
 
 ## Notes
 - Replace placeholder values as needed.

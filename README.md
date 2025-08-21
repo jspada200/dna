@@ -30,10 +30,14 @@ The Dailies Notes Assistant (DNA) is built with a modular architecture to suppor
 
 ## API and storage - Django
 
+Information on how to setup the service to spawn workers and get dailies information can be found in src/manager/README.md
+
 - **API Layer:** The API Layer serves as the primary gateway for all interactions with the DNA system. It provides a consistent, secure interface for users and external tools.
 - **Scheduling Layer:**  cron-like component that constantly checks the DB for upcoming sessions. When a session is due to start, it instructs the Dispatcher to spin up a worker. It also keeps track of currently active sessions and provides an gateway to pass context into the workers.
 
 ## worker - Node
+
+Information on how to setup the workers can be found in src/worker/README.md
 
 A Worker is a self-contained service instance that performs the core tasks of joining, transcribing, and note-taking for a single dailies session.
 
