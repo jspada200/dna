@@ -3,12 +3,58 @@
 <!-- https://github.com/AcademySoftwareFoundation/dna -->
 
 
-Introduction: Dailies Notes Assistant (DNA)
+# Introduction: Dailies Notes Assistant (DNA)
 ===========================================
 
-Mission statement goes here.
+Dailies Note Assistant (DNA) is an open-source tool designed to streamline production workflows for visual effects and animation studios by automating the transcription and summarization of dailies review sessions.
+The core vision for DNA is to create a seamless, "invisible" assistant that joins dailies sessions, accurately transcribes the conversation, intelligently associates notes with the specific media being reviewed, and stores this information in a structured, easily accessible format. By leveraging a flexible, plugin-based architecture, DNA aims to be platform-agnostic, supporting various meeting providers, transcription services, and Large Language Models (LLMs) to fit into any studio's existing infrastructure.
 
-General description goes here.
+## Goals
+
+Automate Note-Taking Assistant: Provide intelligent note suggestions and a searchable historical record of dailies, allowing all participants to focus on the creative review.
+
+Improve Accuracy: Provide a detailed and accurate transcription of all discussions.
+
+Provide Context: Provide ability to look up transcriptions and AI-generated summaries directly to the shot, asset, or element being discussed.
+
+Centralize Records: Create a single, searchable source of truth for all dailies feedback.
+
+Flexibility & Extensibility: Allow studios to integrate their preferred tools (meeting platforms, transcription engines, LLMs) through a robust plugin system.
+
+Open Source: Foster a community-driven project that can be adapted and extended by studios worldwide.
+
+
+# Architecture
+
+The Dailies Notes Assistant (DNA) is built with a modular architecture to support flexibility, scalability, and integration with various tools and platforms. Key components include:
+
+## API and storage - Django
+
+- **API Layer:** The API Layer serves as the primary gateway for all interactions with the DNA system. It provides a consistent, secure interface for users and external tools.
+- **Scheduling Layer:**  cron-like component that constantly checks the DB for upcoming sessions. When a session is due to start, it instructs the Dispatcher to spin up a worker. It also keeps track of currently active sessions and provides an gateway to pass context into the workers.
+
+## worker - Node
+
+A Worker is a self-contained service instance that performs the core tasks of joining, transcribing, and note-taking for a single dailies session.
+
+- **Meeting Manager:** Responsible for managing the overall meeting lifecycle, including joining the meeting, monitoring participant activity, and handling disconnections.
+- **Transcription Engine:** Captures and transcribes audio from dailies meetings using configurable speech-to-text providers.
+- **LLM Tools:** Utilizes large language models (LLMs) to generate concise, actionable notes or actions from meeting transcripts.
+
+# Technical Stack:
+
+Python3.12 for services - We will use a modern version of python for most services in the system. The reason for this is the familiarity of language with developers.
+
+Django as the primary orchestration service - We will use django as the glue to build out the system.
+
+Typescript/node for Workers - The reason for using typescript in the workers is the need to navigate the web using puppeteer. Although puppeteer as well as other mocking frameworks exist in python, these frameworks are not as feature rich as the ones running in node (puppeteer stealth for example). 
+
+# Style
+
+Python:
+- pep8
+- black
+- isort
 
 
 ☎️ Communications channels and additional resources
