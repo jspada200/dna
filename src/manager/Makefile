@@ -1,6 +1,11 @@
 format:
 	docker-compose -f docker-compose.local.yml run web isort src
 	docker-compose -f docker-compose.local.yml run web black src
+
+lint:
+	docker-compose -f docker-compose.local.yml run web isort src --check
+	docker-compose -f docker-compose.local.yml run web black src --check
+
 # Makefile for local development
 
 .PHONY: up down migrate test
