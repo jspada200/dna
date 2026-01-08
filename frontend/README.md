@@ -40,6 +40,33 @@ npm run build:core
 npm run build:app
 ```
 
+### Testing
+
+Run all tests:
+
+```bash
+npm run test
+```
+
+Run tests once (no watch mode):
+
+```bash
+npm run test:run
+```
+
+Run tests with coverage:
+
+```bash
+npm run test:coverage
+```
+
+Run tests for individual packages:
+
+```bash
+npm run test --workspace=@dna/core
+npm run test --workspace=@dna/app
+```
+
 ## Packages
 
 ### @dna/core
@@ -60,3 +87,12 @@ A React application built with:
 - **Radix Themes** - Beautiful, accessible component library
 
 The app imports and uses the `@dna/core` package.
+
+## Testing
+
+Both packages use [Vitest](https://vitest.dev/) for testing:
+
+- **@dna/core** - Uses Vitest with Node.js environment for testing utilities and types
+- **@dna/app** - Uses Vitest with jsdom environment and React Testing Library for component testing
+
+Test files should be named `*.test.ts` or `*.test.tsx` and placed alongside the source files or in a `__tests__` directory.

@@ -11,6 +11,9 @@
     "build": "npm run build --workspaces",
     "build:core": "npm run build --workspace=@dna/core",
     "build:app": "npm run build --workspace=@dna/app",
+    "test": "npm run test --workspaces",
+    "test:run": "npm run test:run --workspaces",
+    "test:coverage": "npm run test:coverage --workspaces",
     "lint": "npm run lint --workspaces"
   },
   "devDependencies": {
