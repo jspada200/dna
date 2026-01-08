@@ -1,0 +1,19 @@
+{
+  "name": "dna-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@dna/app",
+    "build": "npm run build --workspaces",
+    "build:core": "npm run build --workspace=@dna/core",
+    "build:app": "npm run build --workspace=@dna/app",
+    "lint": "npm run lint --workspaces"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

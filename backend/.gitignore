@@ -26,6 +26,8 @@ ENV/
 .pytest_cache/
 .coverage
 htmlcov/
+coverage.xml
+.coverage.*
 .tox/
 .mypy_cache/
 .dmypy.json
