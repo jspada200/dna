@@ -70,11 +70,38 @@ To run the backend, you need to have the following:
    docker-compose logs -f
    ```
 
-## Style
+## Code Formatting
 
-- Black formatting
-- isort for sorting imports
-- pytest/pytest-cov for testing
+The backend uses [Black](https://black.readthedocs.io/) for code formatting and [isort](https://pycqa.github.io/isort/) for import sorting. These tools are automatically checked in CI on pull requests.
+
+### Formatting Your Code
+
+To format your code locally, use the make command:
+
+```bash
+make format-python
+```
+
+This command will:
+1. Automatically set up a virtual environment (`.venv-lint`) if it doesn't exist
+2. Format all Python files in `src/` and `tests/` with Black
+3. Sort imports in all Python files with isort
+
+### Setting Up the Formatting Environment
+
+If you want to set up the formatting environment manually (or if you need to recreate it):
+
+```bash
+make venv-lint
+```
+
+This creates a virtual environment at `.venv-lint` and installs Black and isort.
+
+### Style Guidelines
+
+- **Black**: Code is automatically formatted according to Black's style guide
+- **isort**: Imports are automatically sorted and organized
+- **pytest/pytest-cov**: Used for testing
 
 ## Testing
 
