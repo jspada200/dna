@@ -82,11 +82,64 @@ import { formatDate, isValidUrl, type Version } from '@dna/core';
 ### @dna/app
 
 A React application built with:
+
 - **Vite** - Fast build tool and dev server
 - **TanStack Query** - Powerful data synchronization for React
 - **Radix Themes** - Beautiful, accessible component library
 
 The app imports and uses the `@dna/core` package.
+
+## Code Formatting and Type Checking
+
+The frontend uses [Prettier](https://prettier.io/) for code formatting and TypeScript for type checking. These tools are automatically checked in CI on pull requests.
+
+### Formatting Your Code
+
+To format your code locally, use the npm command:
+
+```bash
+npm run format
+```
+
+This will format all TypeScript, JSON, CSS, and Markdown files in the frontend monorepo.
+
+### Checking Code Formatting
+
+To check if your code is properly formatted without making changes:
+
+```bash
+npm run format:check
+```
+
+This command will fail if any files need formatting, which is useful for CI checks.
+
+### Type Checking
+
+To check TypeScript types across all packages:
+
+```bash
+npm run typecheck
+```
+
+This runs TypeScript's type checker (`tsc --noEmit`) on all packages without emitting any files.
+
+### Formatting and Type Checking Individual Packages
+
+You can also run these commands for individual packages:
+
+```bash
+# Format a specific package
+npm run format --workspace=@dna/app
+npm run format --workspace=@dna/core
+
+# Check formatting for a specific package
+npm run format:check --workspace=@dna/app
+npm run format:check --workspace=@dna/core
+
+# Type check a specific package
+npm run typecheck --workspace=@dna/app
+npm run typecheck --workspace=@dna/core
+```
 
 ## Testing
 

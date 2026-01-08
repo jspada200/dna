@@ -17,21 +17,32 @@ function App() {
       <Heading size="8" mb="4">
         DNA Application
       </Heading>
-      
-      <Card p="4" mb="4">
-        <Text size="3">
-          {isLoading ? 'Loading...' : data?.message}
-        </Text>
-      </Card>
 
-      <Card p="4">
-        <Heading size="4" mb="2">Core Package Demo</Heading>
-        <Text size="2" color="gray">
-          Date formatter: {formatDate(new Date().toISOString())}
-        </Text>
-        <Text size="2" color="gray" style={{ display: 'block', marginTop: '8px' }}>
-          URL validator: {isValidUrl('https://example.com') ? 'Valid' : 'Invalid'}
-        </Text>
+      <Box mb="4">
+        <Card>
+          <Box p="4">
+            <Text size="3">{isLoading ? 'Loading...' : data?.message}</Text>
+          </Box>
+        </Card>
+      </Box>
+
+      <Card>
+        <Box p="4">
+          <Heading size="4" mb="2">
+            Core Package Demo
+          </Heading>
+          <Text size="2" color="gray">
+            Date formatter: {formatDate(new Date().toISOString())}
+          </Text>
+          <Text
+            size="2"
+            color="gray"
+            style={{ display: 'block', marginTop: '8px' }}
+          >
+            URL validator:{' '}
+            {isValidUrl('https://example.com') ? 'Valid' : 'Invalid'}
+          </Text>
+        </Box>
       </Card>
     </Box>
   );

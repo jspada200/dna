@@ -52,6 +52,8 @@ describe('App', () => {
     );
 
     // Use findByText which automatically waits for the element to appear
-    expect(await screen.findByText('Hello from DNA App!', {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(
+      await screen.findByText('Hello from DNA App!', {}, { timeout: 2000 })
+    ).toBeInTheDocument();
   });
 });
