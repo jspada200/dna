@@ -2,11 +2,11 @@ name: Frontend Code Formatting and Type Checking
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, develop ]
     paths:
       - 'frontend/**/*.{ts,tsx,json,css,md}'
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main, develop ]
     paths:
       - 'frontend/**/*.{ts,tsx,json,css,md}'
 

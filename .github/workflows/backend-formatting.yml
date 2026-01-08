@@ -2,11 +2,11 @@ name: Backend Code Formatting
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, develop ]
     paths:
       - 'backend/**/*.py'
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main, develop ]
     paths:
       - 'backend/**/*.py'
 
