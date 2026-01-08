@@ -29,8 +29,10 @@ jobs:
         
     - name: Check code formatting with black
       run: |
-        black --check backend/src/ backend/tests/
+        black --check src/ tests/
+      working-directory: backend
         
     - name: Check import sorting with isort
       run: |
-        isort --check-only backend/src/ backend/tests/
+        isort --check-only src/ tests/
+      working-directory: backend
