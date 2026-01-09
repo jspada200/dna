@@ -3,7 +3,12 @@ from unittest import mock
 
 import pytest
 
-from dna.prodtrack_providers.shotgrid import ShotgridProvider
+from dna.models.entity import Shot, Version
+from dna.prodtrack_providers.prodtrack_provider_base import (
+    ProdtrackProviderBase,
+    get_prodtrack_provider,
+)
+from dna.prodtrack_providers.shotgrid import ShotgridProvider, _get_dna_entity_type
 
 
 @pytest.fixture
@@ -585,3 +590,201 @@ def test_entity_to_dict_converts_datetime_in_list_of_entities(shotgrid_provider)
     # Version in list should have datetime converted
     assert result["versions"][0]["created_at"] == "2021-08-02T15:45:30"
     assert isinstance(result["versions"][0]["created_at"], str)
+
+
+# ============================================================================
+# ProdtrackProviderBase tests
+# ============================================================================
+
+
+class TestProdtrackProviderBase:
+    """Tests for the ProdtrackProviderBase class."""
+
+    def test_get_object_type_returns_entity_model(self):
+        """Test that _get_object_type returns the correct entity model class."""
+        provider = ProdtrackProviderBase()
+        model_class = provider._get_object_type("shot")
+        assert model_class == Shot
+
+    def test_get_object_type_returns_entity_base_for_unknown(self):
+        """Test that _get_object_type returns EntityBase for unknown types."""
+        from dna.models.entity import EntityBase
+
+        provider = ProdtrackProviderBase()
+        model_class = provider._get_object_type("unknown_type")
+        assert model_class == EntityBase
+
+    def test_get_entity_raises_not_implemented(self):
+        """Test that get_entity raises NotImplementedError."""
+        provider = ProdtrackProviderBase()
+        with pytest.raises(NotImplementedError, match="Subclasses must implement"):
+            provider.get_entity("shot", 1)
+
+    def test_add_entity_raises_not_implemented(self):
+        """Test that add_entity raises NotImplementedError."""
+        provider = ProdtrackProviderBase()
+        shot = Shot(id=1, name="test")
+        with pytest.raises(NotImplementedError, match="Subclasses must implement"):
+            provider.add_entity("shot", shot)
+
+
+class TestGetProdtrackProvider:
+    """Tests for the get_prodtrack_provider function."""
+
+    def test_get_prodtrack_provider_returns_shotgrid_provider(self):
+        """Test that get_prodtrack_provider returns ShotgridProvider when configured."""
+        with mock.patch.dict(
+            "os.environ",
+            {
+                "PRODTRACK_PROVIDER": "shotgrid",
+                "SHOTGRID_URL": "https://test.shotgunstudio.com",
+                "SHOTGRID_SCRIPT_NAME": "test_script",
+                "SHOTGRID_API_KEY": "test_key",
+            },
+        ):
+            with mock.patch("dna.prodtrack_providers.shotgrid.Shotgun"):
+                provider = get_prodtrack_provider()
+                assert isinstance(provider, ShotgridProvider)
+
+    def test_get_prodtrack_provider_raises_for_unknown_provider(self):
+        """Test that get_prodtrack_provider raises ValueError for unknown provider."""
+        with mock.patch.dict("os.environ", {"PRODTRACK_PROVIDER": "unknown_provider"}):
+            with pytest.raises(
+                ValueError, match="Unknown production tracking provider"
+            ):
+                get_prodtrack_provider()
+
+
+# ============================================================================
+# ShotGrid edge case tests
+# ============================================================================
+
+
+class TestShotgridEdgeCases:
+    """Tests for edge cases in the ShotGrid provider."""
+
+    @pytest.fixture
+    def shotgrid_provider(self):
+        sg_provider = ShotgridProvider(connect=False)
+        mock_sg = mock.MagicMock()
+        sg_provider.sg = mock_sg
+        return sg_provider
+
+    def test_get_entity_unknown_type_raises_error(self, shotgrid_provider):
+        """Test that get_entity raises ValueError for unknown entity type."""
+        with pytest.raises(ValueError, match="Unknown entity type: unknown_type"):
+            shotgrid_provider.get_entity("unknown_type", 1)
+
+    def test_add_entity_unknown_type_raises_error(self, shotgrid_provider):
+        """Test that add_entity raises ValueError for unknown entity type."""
+        shot = Shot(id=1, name="test")
+        with pytest.raises(ValueError, match="Unknown entity type: unknown_type"):
+            shotgrid_provider.add_entity("unknown_type", shot)
+
+    def test_convert_sg_entity_no_mapping_raises_error(self, shotgrid_provider):
+        """Test that _convert_sg_entity_to_dna_entity raises error when no mapping found."""
+        sg_entity = {"id": 1, "code": "test"}
+        with pytest.raises(
+            ValueError, match="No field mapping found for entity type: unknown_type"
+        ):
+            shotgrid_provider._convert_sg_entity_to_dna_entity(
+                sg_entity, entity_mapping=None, entity_type="unknown_type"
+            )
+
+    def test_convert_entities_to_sg_links_with_single_entity(self, shotgrid_provider):
+        """Test _convert_entities_to_sg_links with a single EntityBase."""
+        version = Version(id=123, name="test_version")
+        result = shotgrid_provider._convert_entities_to_sg_links(version)
+        assert result == {"type": "Version", "id": 123}
+
+    def test_convert_entities_to_sg_links_with_list(self, shotgrid_provider):
+        """Test _convert_entities_to_sg_links with a list of entities."""
+        version1 = Version(id=1, name="v001")
+        version2 = Version(id=2, name="v002")
+        result = shotgrid_provider._convert_entities_to_sg_links([version1, version2])
+        assert result == [{"type": "Version", "id": 1}, {"type": "Version", "id": 2}]
+
+    def test_convert_entities_to_sg_links_returns_none_for_non_entity(
+        self, shotgrid_provider
+    ):
+        """Test _convert_entities_to_sg_links returns None for non-entity values."""
+        result = shotgrid_provider._convert_entities_to_sg_links("not an entity")
+        assert result is None
+
+        result = shotgrid_provider._convert_entities_to_sg_links(12345)
+        assert result is None
+
+        result = shotgrid_provider._convert_entities_to_sg_links(None)
+        assert result is None
+
+    def test_convert_entities_to_sg_links_filters_non_entities_from_list(
+        self, shotgrid_provider
+    ):
+        """Test _convert_entities_to_sg_links filters non-entity items from list."""
+        version = Version(id=1, name="v001")
+        result = shotgrid_provider._convert_entities_to_sg_links(
+            [version, "not_an_entity", 123]
+        )
+        assert result == [{"type": "Version", "id": 1}]
+
+    def test_add_entity_with_none_linked_field(self, shotgrid_provider):
+        """Test add_entity skips linked fields that are None."""
+        shotgrid_provider.sg.reset_mock()
+
+        shotgrid_provider.sg.create.return_value = {
+            "type": "Version",
+            "id": 500,
+            "code": "test_v001",
+            "description": "Test version",
+            "sg_status_list": "wip",
+        }
+
+        version = Version(
+            id=0,
+            name="test_v001",
+            description="Test version",
+            status="wip",
+            entity=None,
+            task=None,
+        )
+
+        created_version = shotgrid_provider.add_entity("version", version)
+
+        call_args = shotgrid_provider.sg.create.call_args
+        sg_data = call_args[0][1]
+        assert "entity" not in sg_data
+        assert "sg_task" not in sg_data
+        assert created_version.id == 500
+
+
+class TestGetDnaEntityType:
+    """Tests for the _get_dna_entity_type function."""
+
+    def test_get_dna_entity_type_for_shot(self):
+        """Test _get_dna_entity_type returns correct type for Shot."""
+        assert _get_dna_entity_type("Shot") == "shot"
+
+    def test_get_dna_entity_type_for_asset(self):
+        """Test _get_dna_entity_type returns correct type for Asset."""
+        assert _get_dna_entity_type("Asset") == "asset"
+
+    def test_get_dna_entity_type_for_version(self):
+        """Test _get_dna_entity_type returns correct type for Version."""
+        assert _get_dna_entity_type("Version") == "version"
+
+    def test_get_dna_entity_type_for_task(self):
+        """Test _get_dna_entity_type returns correct type for Task."""
+        assert _get_dna_entity_type("Task") == "task"
+
+    def test_get_dna_entity_type_for_note(self):
+        """Test _get_dna_entity_type returns correct type for Note."""
+        assert _get_dna_entity_type("Note") == "note"
+
+    def test_get_dna_entity_type_for_playlist(self):
+        """Test _get_dna_entity_type returns correct type for Playlist."""
+        assert _get_dna_entity_type("Playlist") == "playlist"
+
+    def test_get_dna_entity_type_raises_for_unknown(self):
+        """Test _get_dna_entity_type raises ValueError for unknown type."""
+        with pytest.raises(ValueError, match="Unknown entity type: UnknownType"):
+            _get_dna_entity_type("UnknownType")
