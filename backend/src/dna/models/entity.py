@@ -7,7 +7,7 @@ provider-specific fields (e.g., ShotGrid) to a common format.
 from datetime import datetime
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from dna.prodtrack_providers.prodtrack_provider_base import get_prodtrack_provider
 
@@ -20,6 +20,12 @@ class EntityBase(BaseModel):
         populate_by_name=True,
     )
     id: int = Field(description="Entity ID")
+
+    @computed_field
+    @property
+    def type(self) -> str:
+        """Return the entity type name."""
+        return self.__class__.__name__
 
     def __repr__(self) -> str:
         name = getattr(self, "name", None) or getattr(self, "code", None)

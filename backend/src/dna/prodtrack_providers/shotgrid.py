@@ -231,6 +231,7 @@ class ShotgridProvider(ProdtrackProviderBase):
                 sg_entity_data[sg_field_name] = value
 
         # Convert linked entities to SG format for creation
+        linked_fields_to_preserve = {}
         for sg_field_name, dna_field_name in entity_mapping.get(
             "linked_fields", {}
         ).items():
@@ -238,6 +239,7 @@ class ShotgridProvider(ProdtrackProviderBase):
             if linked_entities is None:
                 continue
 
+            linked_fields_to_preserve[dna_field_name] = linked_entities
             sg_linked = self._convert_entities_to_sg_links(linked_entities)
             if sg_linked:
                 sg_entity_data[sg_field_name] = sg_linked
@@ -245,9 +247,16 @@ class ShotgridProvider(ProdtrackProviderBase):
         # Create the entity in ShotGrid
         result = self.sg.create(entity_mapping["entity_id"], sg_entity_data)
 
-        return self._convert_sg_entity_to_dna_entity(
+        # Convert result and preserve linked entities from input
+        created_entity = self._convert_sg_entity_to_dna_entity(
             result, entity_mapping, entity_type, resolve_links=False
         )
+
+        # Restore linked fields from the input entity since SG doesn't return them
+        for dna_field_name, linked_entities in linked_fields_to_preserve.items():
+            setattr(created_entity, dna_field_name, linked_entities)
+
+        return created_entity
 
 
 def _get_dna_entity_type(sg_entity_type: str) -> str:

@@ -79,6 +79,9 @@ class TestCreateNoteMocked:
 
         assert created_note.id == 1234
         assert created_note.subject == "Test Note"
+        assert len(created_note.note_links) == 2
+        assert created_note.note_links[0].id == 6957
+        assert created_note.note_links[1].id == 6
 
     def test_create_note_without_links(self, shotgrid_provider):
         """Test creating a note without any linked entities."""
