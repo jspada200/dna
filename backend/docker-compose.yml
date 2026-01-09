@@ -7,7 +7,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./src:/app
+      - ./src:/app/src
       - ./tests:/app/tests
       - ./pytest.ini:/app/pytest.ini
       - ./htmlcov:/app/htmlcov

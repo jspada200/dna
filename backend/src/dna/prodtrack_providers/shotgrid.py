@@ -3,27 +3,51 @@
 import os
 from typing import Optional
 
-from dna.models.entity import EntityBase
 from shotgun_api3 import Shotgun
 
+from dna.models.entity import ENTITY_MODELS, EntityBase
 from dna.prodtrack_providers.prodtrack_provider_base import ProdtrackProviderBase
 
-
+# Field Mappings map the DNA entity to the SG entity.
+# Key: DNA entity Name
+#   Entity_id: The SG entity Type.
+#   Fields: A mapping between the SG field ID and the DNA field ID. These
+#      Are used as fields in the find query. Source->Destination.
+#   Linked_fields: Like the fields mapping key except these ref to entities. We
+#       TODO: This may not be needed if we use a schema field read.
 FIELD_MAPPING = {
     "shot": {
         "entity_id": "Shot",
         "fields": {
             "id": "id",
-            "code": "code",
+            "code": "name",
             "description": "description",
         },
+        "linked_fields": {"tasks": "tasks"},
     },
     "asset": {
         "entity_id": "Asset",
         "fields": {
             "id": "id",
-            "code": "code",
+            "code": "name",
             "description": "description",
+        },
+        "linked_fields": {"tasks": "tasks"},
+    },
+    "note": {
+        "entity_id": "Note",
+        "fields": {
+            "id": "id",
+            "subject": "subject",
+        },
+    },
+    "task": {
+        "entity_id": "Task",
+        "fields": {
+            "id": "id",
+            "sg_status_list": "status",
+            "step": "pipeline_step",
+            "content": "name",
         },
     },
     "version": {
@@ -39,9 +63,7 @@ FIELD_MAPPING = {
             "sg_path_to_movie": "movie_path",
             "sg_path_to_frames": "frame_path",
         },
-        "linked_fields": {
-            "entity": "entity",
-        }
+        "linked_fields": {"entity": "entity", "sg_task": "task", "notes": "notes"},
     },
     "playlist": {
         "entity_id": "Playlist",
@@ -53,12 +75,9 @@ FIELD_MAPPING = {
             "created_at": "created_at",
             "updated_at": "updated_at",
         },
-        "linked_fields": {
-            "versions": "version"
-        }
+        "linked_fields": {"versions": "versions"},
     },
 }
-
 
 
 class ShotgridProvider(ProdtrackProviderBase):
@@ -94,52 +113,66 @@ class ShotgridProvider(ProdtrackProviderBase):
         if connect:
             self._connect()
 
-
     def _connect(self):
         """Connect to ShotGrid."""
         self.sg = Shotgun(self.url, self.script_name, self.api_key)
-    
+
     def get_entity(self, entity_type: str, entity_id: int) -> EntityBase:
         """
         Get an entity by its ID.
-        
-        Using the field mapping, we get the entity from ShotGrid and then we create the entity object.
+
+        Using the field mapping, we get the entity from ShotGrid and then
+        create the Pydantic entity object.
         """
         if not self.sg:
             raise ValueError("Not connected to ShotGrid")
-        
-        linked_fields = FIELD_MAPPING[entity_type].get("linked_fields", {})
-        field_names = list(linked_fields.values())
-        field_names.extend(list(FIELD_MAPPING[entity_type]["fields"].keys()))
-        
-        entity = self.sg.find_one(
-            FIELD_MAPPING[entity_type]["entity_id"],
+
+        # Get the field mapping for this entity type
+        entity_mapping = FIELD_MAPPING.get(entity_type)
+        if entity_mapping is None:
+            raise ValueError(f"Unknown entity type: {entity_type}")
+
+        # Compose all field names from fields and linked fields
+        fields = list(entity_mapping["fields"].keys())
+        linked_fields_map = entity_mapping.get("linked_fields", {})
+        linked_field_sg_names = list(linked_fields_map.keys())
+        all_field_names = list(set(fields + linked_field_sg_names))
+
+        # Query entity from ShotGrid
+        sg_entity = self.sg.find_one(
+            entity_mapping["entity_id"],
             filters=[["id", "is", entity_id]],
-            fields=field_names
+            fields=all_field_names,
         )
 
-        if not entity:
+        if not sg_entity:
             raise ValueError(f"Entity not found: {entity_type} {entity_id}")
 
-        obj_type = self._get_object_type(entity_type)
-        obj = obj_type(self)
+        # Build DNA field values dict from SG response
+        entity_data: dict = {}
+        for sg_name, dna_name in entity_mapping["fields"].items():
+            entity_data[dna_name] = sg_entity.get(sg_name)
 
-        setattr(obj, "_impl", entity)
-        
-        for sg_name, dna_name in FIELD_MAPPING[entity_type]["fields"].items():
-            setattr(obj, dna_name, entity.get(sg_name))
+        # Populate linked fields by recursively fetching linked entities
+        for sg_field_name, dna_field_name in linked_fields_map.items():
+            linked_data = sg_entity.get(sg_field_name)
+            entity_data[dna_field_name] = self._resolve_linked_field(linked_data)
 
-        for linked_field_name in linked_fields.keys():
-            def __populate_linked_field(entity_data: dict | list | None) -> dict | list | None:
-                if isinstance(entity_data, dict):
-                    return self.get_entity(_get_dna_entity_type(entity_data["type"]), entity_data["id"])
-                
-                elif isinstance(entity_data, list):
-                    return [self.get_entity(_get_dna_entity_type(item["type"]), item["id"]) for item in entity_data]
-                return None
-            setattr(obj, linked_field_name, __populate_linked_field(entity[linked_field_name]))
+        # Instantiate the Pydantic model
+        model_class = ENTITY_MODELS[entity_type]
+        return model_class(**entity_data)
 
-        return obj
+    def _resolve_linked_field(self, data):
+        """Resolve linked entity data by fetching the full entity."""
+        if isinstance(data, dict):
+            dna_type = _get_dna_entity_type(data["type"])
+            return self.get_entity(dna_type, data["id"])
+        elif isinstance(data, list):
+            return [
+                self.get_entity(_get_dna_entity_type(item["type"]), item["id"])
+                for item in data
+            ]
+        return None
 
 
 def _get_dna_entity_type(sg_entity_type: str) -> str:
