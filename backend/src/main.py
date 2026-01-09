@@ -5,6 +5,7 @@ from typing import Annotated, cast
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
 from dna.models import (
     Asset,
     CreateNoteRequest,
