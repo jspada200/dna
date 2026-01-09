@@ -170,7 +170,7 @@ class Version(EntityBase):
     def add_note(self, note: Note):
         """Add a note to the version."""
         prodtrack_provider = get_prodtrack_provider()
-        new_notes = prodtrack_provider.add_entity("note", note)
+        return prodtrack_provider.add_entity("note", note)
 
 
 class Playlist(EntityBase):
