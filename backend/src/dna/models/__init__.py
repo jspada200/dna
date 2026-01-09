@@ -14,6 +14,7 @@ from dna.models.entity import (
     Task,
     Version,
 )
+from dna.models.requests import CreateNoteRequest, EntityLink
 
 __all__ = [
     "EntityBase",
@@ -25,4 +26,6 @@ __all__ = [
     "Playlist",
     "DNAEntity",
     "ENTITY_MODELS",
+    "EntityLink",
+    "CreateNoteRequest",
 ]

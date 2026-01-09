@@ -58,6 +58,12 @@ class Task(EntityBase):
     pipeline_step: Optional[dict[str, Any]] = Field(
         default=None, description="Pipeline step information"
     )
+    project: Optional[dict[str, Any]] = Field(
+        default=None, description="Project information"
+    )
+    entity: Optional["EntityBase"] = Field(
+        default=None, description="Entity this task is assigned to"
+    )
 
 
 class Note(EntityBase):
@@ -89,6 +95,9 @@ class Shot(EntityBase):
 
     name: Optional[str] = Field(default=None, description="Shot name/code")
     description: Optional[str] = Field(default=None, description="Shot description")
+    project: Optional[dict[str, Any]] = Field(
+        default=None, description="Project information"
+    )
     tasks: list["Task"] = Field(default_factory=list, description="Associated tasks")
 
     @field_validator("tasks", mode="before")
@@ -105,6 +114,9 @@ class Asset(EntityBase):
 
     name: Optional[str] = Field(default=None, description="Asset name/code")
     description: Optional[str] = Field(default=None, description="Asset description")
+    project: Optional[dict[str, Any]] = Field(
+        default=None, description="Project information"
+    )
     tasks: list["Task"] = Field(default_factory=list, description="Associated tasks")
 
     @field_validator("tasks", mode="before")
@@ -134,6 +146,9 @@ class Version(EntityBase):
     movie_path: Optional[str] = Field(default=None, description="Path to movie file")
     frame_path: Optional[str] = Field(
         default=None, description="Path to frame sequence"
+    )
+    project: Optional[dict[str, Any]] = Field(
+        default=None, description="Project information"
     )
     entity: Optional[Union["Shot", "Asset"]] = Field(
         default=None, description="Linked Shot or Asset entity"

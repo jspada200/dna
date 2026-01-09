@@ -25,7 +25,7 @@ def test_get_version(shotgrid_provider):
         "description": "Version 1",
         "sg_status_list": "Completed",
         "entity": "Entity 1",
-        "project": "Project 1",
+        "project": {"type": "Project", "id": 1, "name": "Project 1"},
         "user": "User 1",
         "created_at": "2021-01-01",
         "updated_at": "2021-01-01",
@@ -40,6 +40,7 @@ def test_get_version(shotgrid_provider):
     assert version.status == "Completed"
     assert version.movie_path == "path/to/movie"
     assert version.frame_path == "path/to/frames"
+    assert version.project == {"type": "Project", "id": 1, "name": "Project 1"}
 
 
 def test_missing_credentials_raises_error():

@@ -6,7 +6,16 @@ from typing import Annotated, cast
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from dna.models import Asset, Note, Playlist, Shot, Task, Version
+from dna.models import (
+    Asset,
+    CreateNoteRequest,
+    Note,
+    Playlist,
+    Shot,
+    Task,
+    Version,
+)
+from dna.models.entity import EntityBase
 from dna.prodtrack_providers.shotgrid import ShotgridProvider
 
 # API metadata for Swagger documentation
@@ -234,3 +243,55 @@ async def get_note(note_id: int, provider: ShotGridDep) -> Note:
         return cast(Note, provider.get_entity("note", note_id))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# -----------------------------------------------------------------------------
+# Entity creation endpoints (POST)
+# -----------------------------------------------------------------------------
+
+
+def _create_stub_entity(entity_type: str, entity_id: int) -> EntityBase:
+    """Create a minimal entity stub for linking purposes."""
+    entity_map = {
+        "Version": Version,
+        "Playlist": Playlist,
+        "Shot": Shot,
+        "Asset": Asset,
+        "Task": Task,
+        "Note": Note,
+    }
+    model_class = entity_map.get(entity_type)
+    if model_class is None:
+        raise ValueError(f"Unknown entity type: {entity_type}")
+
+    if entity_type == "Playlist":
+        return model_class(id=entity_id, code="stub")
+    return model_class(id=entity_id, name="stub")
+
+
+@app.post(
+    "/note",
+    tags=["Notes"],
+    summary="Create a new note",
+    description="Create a new note in the production tracking system.",
+    response_model=Note,
+    status_code=201,
+)
+async def create_note(request: CreateNoteRequest, provider: ShotGridDep) -> Note:
+    """Create a new note entity."""
+    try:
+        note_links = []
+        if request.note_links:
+            for link in request.note_links:
+                note_links.append(_create_stub_entity(link.type, link.id))
+
+        note = Note(
+            id=0,
+            subject=request.subject,
+            content=request.content,
+            project=request.project,
+            note_links=note_links,
+        )
+        return cast(Note, provider.add_entity("note", note))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

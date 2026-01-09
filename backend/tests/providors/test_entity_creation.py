@@ -25,28 +25,24 @@ def real_shotgrid_provider():
 
 
 @pytest.fixture
-def mock_shotgrid_provider():
+def shotgrid_provider():
     """Create a ShotGrid provider with a mocked SG client."""
-    provider = ShotgridProvider(
-        url="https://test.shotgrid.autodesk.com",
-        script_name="test_script",
-        api_key="test_key",
-        connect=False,
-    )
-    provider.sg = mock.MagicMock()
-    return provider
+    sg_provider = ShotgridProvider(connect=False)
+
+    mock_sg = mock.MagicMock()
+    sg_provider.sg = mock_sg
+
+    return sg_provider
 
 
 class TestCreateNoteMocked:
     """Mocked unit tests for creating Notes."""
 
-    def test_create_note_calls_sg_create_with_correct_data(
-        self, mock_shotgrid_provider
-    ):
+    def test_create_note_calls_sg_create_with_correct_data(self, shotgrid_provider):
         """Test that add_entity calls SG create with properly mapped fields."""
-        provider = mock_shotgrid_provider
+        shotgrid_provider.sg.reset_mock()
 
-        provider.sg.create.return_value = {
+        shotgrid_provider.sg.create.return_value = {
             "type": "Note",
             "id": 1234,
             "subject": "Test Note",
@@ -65,10 +61,10 @@ class TestCreateNoteMocked:
             note_links=[version, playlist],
         )
 
-        created_note = provider.add_entity("note", note)
+        created_note = shotgrid_provider.add_entity("note", note)
 
-        provider.sg.create.assert_called_once()
-        call_args = provider.sg.create.call_args
+        shotgrid_provider.sg.create.assert_called_once()
+        call_args = shotgrid_provider.sg.create.call_args
         assert call_args[0][0] == "Note"
 
         sg_data = call_args[0][1]
@@ -84,11 +80,11 @@ class TestCreateNoteMocked:
         assert created_note.id == 1234
         assert created_note.subject == "Test Note"
 
-    def test_create_note_without_links(self, mock_shotgrid_provider):
+    def test_create_note_without_links(self, shotgrid_provider):
         """Test creating a note without any linked entities."""
-        provider = mock_shotgrid_provider
+        shotgrid_provider.sg.reset_mock()
 
-        provider.sg.create.return_value = {
+        shotgrid_provider.sg.create.return_value = {
             "type": "Note",
             "id": 5678,
             "subject": "Simple Note",
@@ -103,17 +99,17 @@ class TestCreateNoteMocked:
             project={"type": "Project", "id": 1},
         )
 
-        created_note = provider.add_entity("note", note)
+        created_note = shotgrid_provider.add_entity("note", note)
 
         assert created_note.id == 5678
         assert created_note.subject == "Simple Note"
         assert created_note.content == "Just a note"
 
-    def test_create_note_skips_none_values(self, mock_shotgrid_provider):
+    def test_create_note_skips_none_values(self, shotgrid_provider):
         """Test that None values are not sent to ShotGrid."""
-        provider = mock_shotgrid_provider
+        shotgrid_provider.sg.reset_mock()
 
-        provider.sg.create.return_value = {
+        shotgrid_provider.sg.create.return_value = {
             "type": "Note",
             "id": 9999,
             "subject": "Minimal Note",
@@ -127,9 +123,9 @@ class TestCreateNoteMocked:
             project={"type": "Project", "id": 1},
         )
 
-        provider.add_entity("note", note)
+        shotgrid_provider.add_entity("note", note)
 
-        call_args = provider.sg.create.call_args
+        call_args = shotgrid_provider.sg.create.call_args
         sg_data = call_args[0][1]
         assert "content" not in sg_data
 
