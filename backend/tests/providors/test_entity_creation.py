@@ -1,0 +1,165 @@
+"""Tests for creating entities in ShotGrid.
+
+Includes both integration tests (real SG) and unit tests (mocked).
+"""
+
+import os
+from unittest import mock
+
+import pytest
+
+from dna.models.entity import Note, Playlist, Version
+from dna.prodtrack_providers.shotgrid import ShotgridProvider
+
+
+@pytest.fixture
+def real_shotgrid_provider():
+    """Create a real ShotGrid provider connected to the actual server."""
+    provider = ShotgridProvider(
+        url=os.getenv("SHOTGRID_URL"),
+        script_name=os.getenv("SHOTGRID_SCRIPT_NAME"),
+        api_key=os.getenv("SHOTGRID_API_KEY"),
+        connect=True,
+    )
+    return provider
+
+
+@pytest.fixture
+def mock_shotgrid_provider():
+    """Create a ShotGrid provider with a mocked SG client."""
+    provider = ShotgridProvider(
+        url="https://test.shotgrid.autodesk.com",
+        script_name="test_script",
+        api_key="test_key",
+        connect=False,
+    )
+    provider.sg = mock.MagicMock()
+    return provider
+
+
+class TestCreateNoteMocked:
+    """Mocked unit tests for creating Notes."""
+
+    def test_create_note_calls_sg_create_with_correct_data(
+        self, mock_shotgrid_provider
+    ):
+        """Test that add_entity calls SG create with properly mapped fields."""
+        provider = mock_shotgrid_provider
+
+        provider.sg.create.return_value = {
+            "type": "Note",
+            "id": 1234,
+            "subject": "Test Note",
+            "content": "Test content",
+            "project": {"type": "Project", "id": 85},
+        }
+
+        version = Version(id=6957, name="test_version")
+        playlist = Playlist(id=6, code="test_playlist")
+
+        note = Note(
+            id=0,
+            subject="Test Note",
+            content="Test content",
+            project={"type": "Project", "id": 85},
+            note_links=[version, playlist],
+        )
+
+        created_note = provider.add_entity("note", note)
+
+        provider.sg.create.assert_called_once()
+        call_args = provider.sg.create.call_args
+        assert call_args[0][0] == "Note"
+
+        sg_data = call_args[0][1]
+        assert sg_data["subject"] == "Test Note"
+        assert sg_data["content"] == "Test content"
+        assert sg_data["project"] == {"type": "Project", "id": 85}
+        assert sg_data["note_links"] == [
+            {"type": "Version", "id": 6957},
+            {"type": "Playlist", "id": 6},
+        ]
+        assert "id" not in sg_data
+
+        assert created_note.id == 1234
+        assert created_note.subject == "Test Note"
+
+    def test_create_note_without_links(self, mock_shotgrid_provider):
+        """Test creating a note without any linked entities."""
+        provider = mock_shotgrid_provider
+
+        provider.sg.create.return_value = {
+            "type": "Note",
+            "id": 5678,
+            "subject": "Simple Note",
+            "content": "Just a note",
+            "project": {"type": "Project", "id": 1},
+        }
+
+        note = Note(
+            id=0,
+            subject="Simple Note",
+            content="Just a note",
+            project={"type": "Project", "id": 1},
+        )
+
+        created_note = provider.add_entity("note", note)
+
+        assert created_note.id == 5678
+        assert created_note.subject == "Simple Note"
+        assert created_note.content == "Just a note"
+
+    def test_create_note_skips_none_values(self, mock_shotgrid_provider):
+        """Test that None values are not sent to ShotGrid."""
+        provider = mock_shotgrid_provider
+
+        provider.sg.create.return_value = {
+            "type": "Note",
+            "id": 9999,
+            "subject": "Minimal Note",
+            "project": {"type": "Project", "id": 1},
+        }
+
+        note = Note(
+            id=0,
+            subject="Minimal Note",
+            content=None,
+            project={"type": "Project", "id": 1},
+        )
+
+        provider.add_entity("note", note)
+
+        call_args = provider.sg.create.call_args
+        sg_data = call_args[0][1]
+        assert "content" not in sg_data
+
+
+class TestCreateNoteIntegration:
+    """Integration tests for creating Notes in ShotGrid."""
+
+    def test_create_note_on_version(self, real_shotgrid_provider):
+        """Test creating a note linked to version 6957 and playlist 6."""
+        provider = real_shotgrid_provider
+
+        version = Version(id=6957, name="test_version")
+        playlist = Playlist(id=6, code="test_playlist")
+
+        note = Note(
+            id=0,
+            subject="Test Note from DNA Integration Test",
+            content="This note was created by the DNA integration test suite.",
+            project={"type": "Project", "id": 85},
+            note_links=[version, playlist],
+        )
+
+        created_note = provider.add_entity("note", note)
+
+        assert created_note is not None
+        assert created_note.id > 0
+        assert created_note.subject == "Test Note from DNA Integration Test"
+        assert (
+            created_note.content
+            == "This note was created by the DNA integration test suite."
+        )
+
+        print(f"Created note with ID: {created_note.id}")

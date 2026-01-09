@@ -17,6 +17,7 @@ services:
       - SHOTGRID_URL=https://your-shotgrid-url.com
       - SHOTGRID_API_KEY=your-shotgrid-api-key
       - SHOTGRID_SCRIPT_NAME=your-shotgrid-script-name
+      - PRODTRACK_PROVIDER=shotgrid
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

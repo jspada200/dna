@@ -39,7 +39,10 @@ FIELD_MAPPING = {
         "fields": {
             "id": "id",
             "subject": "subject",
+            "content": "content",
+            "project": "project",
         },
+        "linked_fields": {"note_links": "note_links"},
     },
     "task": {
         "entity_id": "Task",
@@ -117,6 +120,36 @@ class ShotgridProvider(ProdtrackProviderBase):
         """Connect to ShotGrid."""
         self.sg = Shotgun(self.url, self.script_name, self.api_key)
 
+    def _convert_sg_entity_to_dna_entity(
+        self,
+        sg_entity: dict,
+        entity_mapping: Optional[dict] = None,
+        entity_type: Optional[str] = None,
+        resolve_links: bool = True,
+    ) -> EntityBase:
+        if entity_mapping is None:
+            entity_mapping = FIELD_MAPPING.get(entity_type)
+        if entity_mapping is None:
+            raise ValueError(f"No field mapping found for entity type: {entity_type}")
+
+        linked_fields_map = entity_mapping.get("linked_fields", {})
+
+        # Build DNA field values dict from SG response
+        entity_data: dict = {}
+        for sg_name, dna_name in entity_mapping["fields"].items():
+            entity_data[dna_name] = sg_entity.get(sg_name)
+
+        # Populate linked fields by recursively fetching linked entities
+        if resolve_links:
+            for sg_field_name, dna_field_name in linked_fields_map.items():
+                linked_data = sg_entity.get(sg_field_name)
+                entity_data[dna_field_name] = self._resolve_linked_field(linked_data)
+
+        # Instantiate the Pydantic model
+        model_class = ENTITY_MODELS[entity_type]
+
+        return model_class(**entity_data)
+
     def get_entity(self, entity_type: str, entity_id: int) -> EntityBase:
         """
         Get an entity by its ID.
@@ -148,19 +181,9 @@ class ShotgridProvider(ProdtrackProviderBase):
         if not sg_entity:
             raise ValueError(f"Entity not found: {entity_type} {entity_id}")
 
-        # Build DNA field values dict from SG response
-        entity_data: dict = {}
-        for sg_name, dna_name in entity_mapping["fields"].items():
-            entity_data[dna_name] = sg_entity.get(sg_name)
-
-        # Populate linked fields by recursively fetching linked entities
-        for sg_field_name, dna_field_name in linked_fields_map.items():
-            linked_data = sg_entity.get(sg_field_name)
-            entity_data[dna_field_name] = self._resolve_linked_field(linked_data)
-
-        # Instantiate the Pydantic model
-        model_class = ENTITY_MODELS[entity_type]
-        return model_class(**entity_data)
+        return self._convert_sg_entity_to_dna_entity(
+            sg_entity, entity_mapping, entity_type
+        )
 
     def _resolve_linked_field(self, data):
         """Resolve linked entity data by fetching the full entity."""
@@ -173,6 +196,53 @@ class ShotgridProvider(ProdtrackProviderBase):
                 for item in data
             ]
         return None
+
+    def _convert_entities_to_sg_links(self, entities):
+        """Convert DNA entities to ShotGrid link format for creation."""
+        if isinstance(entities, EntityBase):
+            return {"type": entities.__class__.__name__, "id": entities.id}
+        elif isinstance(entities, list):
+            return [
+                {"type": e.__class__.__name__, "id": e.id}
+                for e in entities
+                if isinstance(e, EntityBase)
+            ]
+        return None
+
+    def add_entity(self, entity_type: str, entity: EntityBase) -> EntityBase:
+        """Add an entity to the production tracking system."""
+
+        entity_mapping = FIELD_MAPPING.get(entity_type)
+        if entity_mapping is None:
+            raise ValueError(f"Unknown entity type: {entity_type}")
+
+        # Map the entity fields to SG fields, skipping 'id' which is auto-generated
+        sg_entity_data = {}
+        for sg_field_name, dna_field_name in entity_mapping["fields"].items():
+            if sg_field_name == "id":
+                continue
+            value = entity.model_dump().get(dna_field_name)
+            if value is not None:
+                sg_entity_data[sg_field_name] = value
+
+        # Convert linked entities to SG format for creation
+        for sg_field_name, dna_field_name in entity_mapping.get(
+            "linked_fields", {}
+        ).items():
+            linked_entities = getattr(entity, dna_field_name, None)
+            if linked_entities is None:
+                continue
+
+            sg_linked = self._convert_entities_to_sg_links(linked_entities)
+            if sg_linked:
+                sg_entity_data[sg_field_name] = sg_linked
+
+        # Create the entity in ShotGrid
+        result = self.sg.create(entity_mapping["entity_id"], sg_entity_data)
+
+        return self._convert_sg_entity_to_dna_entity(
+            result, entity_mapping, entity_type, resolve_links=False
+        )
 
 
 def _get_dna_entity_type(sg_entity_type: str) -> str:

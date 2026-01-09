@@ -9,6 +9,8 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from dna.prodtrack_providers.prodtrack_provider_base import get_prodtrack_provider
+
 
 class EntityBase(BaseModel):
     """Base model for all DNA entities."""
@@ -66,6 +68,17 @@ class Note(EntityBase):
 
     subject: Optional[str] = Field(default=None, description="Note subject line")
     content: Optional[str] = Field(default=None, description="Note body content")
+    project: Optional[dict[str, Any]] = Field(
+        default=None, description="Project this note belongs to"
+    )
+    note_links: list["EntityBase"] = Field(
+        default_factory=list, description="Entities this note is linked to"
+    )
+
+    @field_validator("note_links", mode="before")
+    @classmethod
+    def note_links_none_to_list(cls, v):
+        return v if v is not None else []
 
 
 class Shot(EntityBase):
@@ -132,6 +145,11 @@ class Version(EntityBase):
     @classmethod
     def notes_none_to_list(cls, v):
         return v if v is not None else []
+
+    def add_note(self, note: Note):
+        """Add a note to the version."""
+        prodtrack_provider = get_prodtrack_provider()
+        new_notes = prodtrack_provider.add_entity("note", note)
 
 
 class Playlist(EntityBase):
