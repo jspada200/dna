@@ -18,25 +18,15 @@ export const GlobalStyles = createGlobalStyle`
     -moz-osx-font-smoothing: grayscale;
   }
 
-  html,
   body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    min-height: 100vh;
     background: ${({ theme }) => theme.colors.bg.base};
   }
 
-  #root,
   #root > * {
     display: flex;
     flex-direction: column;
     flex: 1;
-    margin: 0 !important;
-    padding: 0;
     width: 100%;
-    height: 100%;
     min-height: 100vh;
   }
 
