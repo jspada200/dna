@@ -11,8 +11,8 @@
   /* Sidebar specific */
   --dna-sidebar-bg: #111118;
   --dna-sidebar-border: #2a2a3a;
-  --dna-sidebar-width-expanded: 240px;
-  --dna-sidebar-width-collapsed: 64px;
+  --dna-sidebar-width-expanded: 320px;
+  --dna-sidebar-width-collapsed: 120px;
 
   /* Text hierarchy */
   --dna-text-primary: #f0f0f5;
@@ -136,9 +136,10 @@ body {
 }
 
 .dna-sidebar.collapsed .dna-sidebar-header {
-  justify-content: center;
+  justify-content: space-between;
   gap: 4px;
   padding: 12px 8px;
+
 }
 
 .dna-sidebar-collapse-btn {
@@ -164,6 +165,41 @@ body {
 .dna-sidebar-collapse-btn svg {
   width: 20px;
   height: 20px;
+}
+
+.dna-sidebar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* User Avatar */
+.dna-user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--dna-accent) 0%, #c084fc 100%);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--dna-transition-fast);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.dna-user-avatar:hover {
+  box-shadow: 0 0 0 2px var(--dna-accent-subtle);
+}
+
+.dna-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dna-user-avatar span {
+  line-height: 1;
 }
 
 .dna-sidebar-logo {
