@@ -11,7 +11,7 @@
   /* Sidebar specific */
   --dna-sidebar-bg: #111118;
   --dna-sidebar-border: #2a2a3a;
-  --dna-sidebar-width-expanded: 320px;
+  --dna-sidebar-width-expanded: 420px;
   --dna-sidebar-width-collapsed: 120px;
 
   /* Text hierarchy */
@@ -171,6 +171,119 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Sidebar Toolbar */
+.dna-sidebar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--dna-border-subtle);
+  gap: 12px;
+}
+
+.dna-sidebar-toolbar button[data-accent-color="gray"] {
+  color: var(--dna-text-secondary);
+}
+
+.dna-sidebar-toolbar button[data-accent-color="gray"]:hover {
+  color: var(--dna-text-primary);
+}
+
+.dna-sidebar-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Split Button */
+.dna-split-button {
+  display: flex;
+  align-items: stretch;
+  height: 32px;
+}
+
+.dna-split-button-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--dna-font-sans);
+  color: var(--dna-text-secondary);
+  background: transparent;
+  border: 1px solid var(--dna-border-default);
+  border-right: none;
+  border-top-left-radius: var(--dna-radius-md);
+  border-bottom-left-radius: var(--dna-radius-md);
+  cursor: pointer;
+  transition: all var(--dna-transition-fast);
+  white-space: nowrap;
+}
+
+.dna-split-button-main:hover {
+  background: var(--dna-bg-surface-hover);
+  color: var(--dna-text-primary);
+  border-color: var(--dna-border-strong);
+}
+
+.dna-split-button-main:active {
+  background: var(--dna-bg-overlay);
+  transform: translateY(1px);
+}
+
+.dna-split-button-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  border: 1px solid var(--dna-border-default);
+  border-left: 1px solid var(--dna-border-subtle);
+  border-top-right-radius: var(--dna-radius-md);
+  border-bottom-right-radius: var(--dna-radius-md);
+  background: transparent;
+  color: var(--dna-text-secondary);
+  cursor: pointer;
+  transition: all var(--dna-transition-fast);
+}
+
+.dna-split-button-trigger:hover {
+  background: var(--dna-bg-surface-hover);
+  color: var(--dna-text-primary);
+  border-color: var(--dna-border-strong);
+}
+
+.dna-split-button-trigger:active {
+  background: var(--dna-bg-overlay);
+  transform: translateY(1px);
+}
+
+.dna-split-button:has(.dna-split-button-main:hover) .dna-split-button-trigger,
+.dna-split-button:has(.dna-split-button-trigger:hover) .dna-split-button-main {
+  border-color: var(--dna-border-strong);
+}
+
+.dna-sidebar-toolbar-right {
+  display: flex;
+  align-items: center;
+}
+
+.dna-sidebar-search {
+  width: 160px;
+  animation: searchExpand var(--dna-transition-fast) ease-out;
+}
+
+@keyframes searchExpand {
+  from {
+    width: 32px;
+    opacity: 0;
+  }
+  to {
+    width: 160px;
+    opacity: 1;
+  }
 }
 
 /* User Avatar */
