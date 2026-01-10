@@ -8,7 +8,9 @@ interface LayoutProps {
 
 const LayoutWrapper = styled.div`
   display: flex;
+  width: 100%;
   min-height: 100vh;
+  height: 100%;
   background: ${({ theme }) => theme.colors.bg.base};
 `;
 

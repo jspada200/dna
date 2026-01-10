@@ -14,8 +14,8 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
-        <GlobalStyles />
         <Theme>
+          <GlobalStyles />
           <App />
         </Theme>
       </ThemeProvider>
