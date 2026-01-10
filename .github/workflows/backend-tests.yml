@@ -32,3 +32,7 @@ jobs:
       run: |
         python -m pytest --cov-fail-under=90
       working-directory: backend
+      env:
+        SHOTGRID_URL: https://mock-shotgrid.example.com
+        SHOTGRID_SCRIPT_NAME: mock_script
+        SHOTGRID_API_KEY: mock_api_key
