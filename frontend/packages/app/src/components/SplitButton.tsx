@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import styled from 'styled-components';
 import { ChevronDown } from 'lucide-react';
 import { DropdownMenu } from '@radix-ui/themes';
 
@@ -13,17 +14,81 @@ interface SplitButtonProps {
   menuItems: SplitButtonMenuItem[];
 }
 
+const SplitButtonWrapper = styled.div`
+  display: flex;
+  align-items: stretch;
+  height: 32px;
+
+  &:hover button {
+    border-color: ${({ theme }) => theme.colors.border.strong};
+  }
+`;
+
+const MainButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: ${({ theme }) => theme.fonts.sans};
+  color: ${({ theme }) => theme.colors.text.secondary};
+  background: transparent;
+  border: 1px solid ${({ theme }) => theme.colors.border.default};
+  border-right: none;
+  border-top-left-radius: ${({ theme }) => theme.radii.md};
+  border-bottom-left-radius: ${({ theme }) => theme.radii.md};
+  cursor: pointer;
+  transition: all ${({ theme }) => theme.transitions.fast};
+  white-space: nowrap;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.bg.surfaceHover};
+    color: ${({ theme }) => theme.colors.text.primary};
+    border-color: ${({ theme }) => theme.colors.border.strong};
+  }
+
+  &:active {
+    background: ${({ theme }) => theme.colors.bg.overlay};
+    transform: translateY(1px);
+  }
+`;
+
+const TriggerButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  border: 1px solid ${({ theme }) => theme.colors.border.default};
+  border-left: 1px solid ${({ theme }) => theme.colors.border.subtle};
+  border-top-right-radius: ${({ theme }) => theme.radii.md};
+  border-bottom-right-radius: ${({ theme }) => theme.radii.md};
+  background: transparent;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  cursor: pointer;
+  transition: all ${({ theme }) => theme.transitions.fast};
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.bg.surfaceHover};
+    color: ${({ theme }) => theme.colors.text.primary};
+    border-color: ${({ theme }) => theme.colors.border.strong};
+  }
+
+  &:active {
+    background: ${({ theme }) => theme.colors.bg.overlay};
+    transform: translateY(1px);
+  }
+`;
+
 export function SplitButton({ children, onClick, menuItems }: SplitButtonProps) {
   return (
-    <div className="dna-split-button">
-      <button className="dna-split-button-main" onClick={onClick}>
-        {children}
-      </button>
+    <SplitButtonWrapper>
+      <MainButton onClick={onClick}>{children}</MainButton>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger>
-          <button className="dna-split-button-trigger">
+          <TriggerButton>
             <ChevronDown size={14} />
-          </button>
+          </TriggerButton>
         </DropdownMenu.Trigger>
         <DropdownMenu.Content>
           {menuItems.map((item, index) => (
@@ -33,6 +98,6 @@ export function SplitButton({ children, onClick, menuItems }: SplitButtonProps) 
           ))}
         </DropdownMenu.Content>
       </DropdownMenu.Root>
-    </div>
+    </SplitButtonWrapper>
   );
 }
