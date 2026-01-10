@@ -99,13 +99,18 @@ class TestCreateNoteEndpoint:
         finally:
             app.dependency_overrides.clear()
 
-    def test_create_note_missing_project_returns_422(self):
+    def test_create_note_missing_project_returns_422(self, mock_provider):
         """Test that missing required project field returns 422."""
-        response = client.post(
-            "/note",
-            json={
-                "subject": "Test Note",
-                "content": "Test content",
-            },
-        )
-        assert response.status_code == 422
+        app.dependency_overrides[get_shotgrid_provider] = lambda: mock_provider
+
+        try:
+            response = client.post(
+                "/note",
+                json={
+                    "subject": "Test Note",
+                    "content": "Test content",
+                },
+            )
+            assert response.status_code == 422
+        finally:
+            app.dependency_overrides.clear()

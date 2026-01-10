@@ -1,27 +1,11 @@
-"""Tests for creating entities in ShotGrid.
+"""Tests for creating entities in ShotGrid."""
 
-Includes both integration tests (real SG) and unit tests (mocked).
-"""
-
-import os
 from unittest import mock
 
 import pytest
 
 from dna.models.entity import Note, Playlist, Version
 from dna.prodtrack_providers.shotgrid import ShotgridProvider
-
-
-@pytest.fixture
-def real_shotgrid_provider():
-    """Create a real ShotGrid provider connected to the actual server."""
-    provider = ShotgridProvider(
-        url=os.getenv("SHOTGRID_URL"),
-        script_name=os.getenv("SHOTGRID_SCRIPT_NAME"),
-        api_key=os.getenv("SHOTGRID_API_KEY"),
-        connect=True,
-    )
-    return provider
 
 
 @pytest.fixture
@@ -133,12 +117,24 @@ class TestCreateNoteMocked:
         assert "content" not in sg_data
 
 
-class TestCreateNoteIntegration:
-    """Integration tests for creating Notes in ShotGrid."""
+class TestCreateNoteOnVersion:
+    """Tests for creating notes linked to versions."""
 
-    def test_create_note_on_version(self, real_shotgrid_provider):
-        """Test creating a note linked to version 6957 and playlist 6."""
-        provider = real_shotgrid_provider
+    def test_create_note_on_version(self, shotgrid_provider):
+        """Test creating a note linked to a version and playlist."""
+        shotgrid_provider.sg.reset_mock()
+
+        shotgrid_provider.sg.create.return_value = {
+            "type": "Note",
+            "id": 7890,
+            "subject": "Test Note from DNA Integration Test",
+            "content": "This note was created by the DNA integration test suite.",
+            "project": {"type": "Project", "id": 85},
+            "note_links": [
+                {"type": "Version", "id": 6957, "name": "test_version"},
+                {"type": "Playlist", "id": 6, "code": "test_playlist"},
+            ],
+        }
 
         version = Version(id=6957, name="test_version")
         playlist = Playlist(id=6, code="test_playlist")
@@ -151,14 +147,13 @@ class TestCreateNoteIntegration:
             note_links=[version, playlist],
         )
 
-        created_note = provider.add_entity("note", note)
+        created_note = shotgrid_provider.add_entity("note", note)
 
+        shotgrid_provider.sg.create.assert_called_once()
         assert created_note is not None
-        assert created_note.id > 0
+        assert created_note.id == 7890
         assert created_note.subject == "Test Note from DNA Integration Test"
         assert (
             created_note.content
             == "This note was created by the DNA integration test suite."
         )
-
-        print(f"Created note with ID: {created_note.id}")
