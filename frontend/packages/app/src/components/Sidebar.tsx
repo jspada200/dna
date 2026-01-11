@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { PanelLeftClose, PanelLeft } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Settings } from 'lucide-react';
 import { Button } from '@radix-ui/themes';
 import { Logo } from './Logo';
 import { UserAvatar } from './UserAvatar';
@@ -92,10 +92,59 @@ const ToolbarLeft = styled.div`
   flex-shrink: 0;
 `;
 
+const ScrollableContent = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+`;
+
+const Footer = styled.div<{ $collapsed: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: ${({ $collapsed }) => ($collapsed ? '12px 8px' : '12px 16px')};
+  border-top: 1px solid ${({ theme }) => theme.colors.border.subtle};
+  gap: 8px;
+`;
+
+const SettingsButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 32px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: ${({ theme }) => theme.fonts.sans};
+  color: ${({ theme }) => theme.colors.text.secondary};
+  background: transparent;
+  border: 1px solid ${({ theme }) => theme.colors.border.default};
+  border-radius: ${({ theme }) => theme.radii.md};
+  cursor: pointer;
+  transition: all ${({ theme }) => theme.transitions.fast};
+  white-space: nowrap;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.bg.surfaceHover};
+    color: ${({ theme }) => theme.colors.text.primary};
+    border-color: ${({ theme }) => theme.colors.border.strong};
+  }
+
+  &:active {
+    background: ${({ theme }) => theme.colors.bg.overlay};
+    transform: translateY(1px);
+  }
+`;
+
 export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
   const playlistMenuItems = [
     { label: 'Replace Playlist' },
     { label: 'Add Version' },
+  ];
+
+  const footerMenuItems = [
+    { label: 'Pause Transcription' },
+    { label: 'Resume Transcription' },
   ];
 
   return (
@@ -130,6 +179,18 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
 
           <ExpandableSearch placeholder="Search versions..." />
         </Toolbar>
+      )}
+
+      <ScrollableContent />
+
+      {!collapsed && (
+        <Footer $collapsed={collapsed}>
+          <SplitButton menuItems={footerMenuItems}>Transcribing</SplitButton>
+          <SettingsButton>
+            <Settings size={16} />
+            Settings
+          </SettingsButton>
+        </Footer>
       )}
     </SidebarWrapper>
   );

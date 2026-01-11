@@ -12,6 +12,8 @@ interface SplitButtonProps {
   children: ReactNode;
   onClick?: () => void;
   menuItems: SplitButtonMenuItem[];
+  leftSlot?: ReactNode;
+  rightSlot?: ReactNode;
 }
 
 const SplitButtonWrapper = styled.div`
@@ -80,10 +82,20 @@ const TriggerButton = styled.button`
   }
 `;
 
-export function SplitButton({ children, onClick, menuItems }: SplitButtonProps) {
+export function SplitButton({
+  children,
+  onClick,
+  menuItems,
+  leftSlot,
+  rightSlot,
+}: SplitButtonProps) {
   return (
     <SplitButtonWrapper>
-      <MainButton onClick={onClick}>{children}</MainButton>
+      <MainButton onClick={onClick}>
+        {leftSlot}
+        {children}
+        {rightSlot}
+      </MainButton>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger>
           <TriggerButton>
