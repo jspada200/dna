@@ -11,7 +11,8 @@ interface SplitButtonMenuItem {
 interface SplitButtonProps {
   children: ReactNode;
   onClick?: () => void;
-  menuItems: SplitButtonMenuItem[];
+  menuItems?: SplitButtonMenuItem[];
+  onRightClick?: () => void;
   leftSlot?: ReactNode;
   rightSlot?: ReactNode;
 }
@@ -86,30 +87,44 @@ export function SplitButton({
   children,
   onClick,
   menuItems,
+  onRightClick,
   leftSlot,
   rightSlot,
 }: SplitButtonProps) {
+  const renderRightButton = () => {
+    if (menuItems && menuItems.length > 0) {
+      return (
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger>
+            <TriggerButton>
+              {rightSlot ?? <ChevronDown size={14} />}
+            </TriggerButton>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Content>
+            {menuItems.map((item, index) => (
+              <DropdownMenu.Item key={index} onSelect={item.onSelect}>
+                {item.label}
+              </DropdownMenu.Item>
+            ))}
+          </DropdownMenu.Content>
+        </DropdownMenu.Root>
+      );
+    }
+
+    return (
+      <TriggerButton onClick={onRightClick}>
+        {rightSlot ?? <ChevronDown size={14} />}
+      </TriggerButton>
+    );
+  };
+
   return (
     <SplitButtonWrapper>
       <MainButton onClick={onClick}>
         {leftSlot}
         {children}
-        {rightSlot}
       </MainButton>
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger>
-          <TriggerButton>
-            <ChevronDown size={14} />
-          </TriggerButton>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Content>
-          {menuItems.map((item, index) => (
-            <DropdownMenu.Item key={index} onSelect={item.onSelect}>
-              {item.label}
-            </DropdownMenu.Item>
-          ))}
-        </DropdownMenu.Content>
-      </DropdownMenu.Root>
+      {renderRightButton()}
     </SplitButtonWrapper>
   );
 }

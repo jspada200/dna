@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { PanelLeftClose, PanelLeft, Settings } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Settings, Phone, Play } from 'lucide-react';
 import { Button } from '@radix-ui/themes';
 import { Logo } from './Logo';
 import { UserAvatar } from './UserAvatar';
@@ -142,11 +142,6 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
     { label: 'Add Version' },
   ];
 
-  const footerMenuItems = [
-    { label: 'Pause Transcription' },
-    { label: 'Resume Transcription' },
-  ];
-
   return (
     <SidebarWrapper $collapsed={collapsed}>
       <Header $collapsed={collapsed}>
@@ -185,7 +180,13 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
 
       {!collapsed && (
         <Footer $collapsed={collapsed}>
-          <SplitButton menuItems={footerMenuItems}>Transcribing</SplitButton>
+          <SplitButton
+            leftSlot={<Phone size={14} />}
+            rightSlot={<Play size={14} />}
+            onRightClick={() => {}}
+          >
+            Transcribing
+          </SplitButton>
           <SettingsButton>
             <Settings size={16} />
             Settings
