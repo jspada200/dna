@@ -13,56 +13,47 @@ const Container = styled.div`
   justify-content: flex-end;
 `;
 
-const InputField = styled.div<{ $isOpen: boolean }>`
+const PillContainer = styled.div<{ $isOpen: boolean }>`
   position: absolute;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: ${({ $isOpen }) => ($isOpen ? '200px' : '0')};
-  opacity: ${({ $isOpen }) => ($isOpen ? 1 : 0)};
-  transition: width 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity 200ms ease-out;
-  pointer-events: ${({ $isOpen }) => ($isOpen ? 'auto' : 'none')};
-`;
-
-const InputWrapper = styled.div`
   display: flex;
   align-items: center;
-  width: 100%;
-`;
-
-const StyledInput = styled.input`
-  width: 110px;
   height: 32px;
-  padding: 0 12px;
+  padding: 0 4px 0 12px;
   border-radius: 16px;
   border: 1px solid ${({ theme }) => theme.colors.accent.main};
   background: ${({ theme }) => theme.colors.bg.surface};
-  color: ${({ theme }) => theme.colors.text.primary};
-  font-family: ${({ theme }) => theme.fonts.sans};
-  font-size: 13px;
-  outline: none;
   box-shadow: 0 0 0 2px ${({ theme }) => theme.colors.accent.glow};
-  transition: border-color ${({ theme }) => theme.transitions.base},
+  width: ${({ $isOpen }) => ($isOpen ? '200px' : '0')};
+  opacity: ${({ $isOpen }) => ($isOpen ? 1 : 0)};
+  overflow: hidden;
+  transition: width 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 200ms ease-out,
     box-shadow ${({ theme }) => theme.transitions.base};
-  text-overflow: ellipsis;
-  flex-shrink: 0;
+  pointer-events: ${({ $isOpen }) => ($isOpen ? 'auto' : 'none')};
 
-  &::placeholder {
-    color: ${({ theme }) => theme.colors.text.muted};
-  }
-
-  &:focus {
-    border-color: ${({ theme }) => theme.colors.accent.hover};
+  &:focus-within {
     box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.accent.glow};
   }
 `;
 
-const IconsContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0;
-  flex-shrink: 0;
+const StyledInput = styled.input`
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: ${({ theme }) => theme.colors.text.primary};
+  font-family: ${({ theme }) => theme.fonts.sans};
+  font-size: 13px;
+  outline: none;
+
+  &::placeholder {
+    color: ${({ theme }) => theme.colors.text.muted};
+  }
 `;
 
 const IconButton = styled.button`
@@ -77,6 +68,7 @@ const IconButton = styled.button`
   color: ${({ theme }) => theme.colors.accent.main};
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.base};
+  flex-shrink: 0;
 
   &:hover {
     background: ${({ theme }) => theme.colors.accent.subtle};
@@ -105,6 +97,7 @@ const ChevronButton = styled.button`
   color: ${({ theme }) => theme.colors.text.muted};
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.base};
+  flex-shrink: 0;
 
   &:hover {
     background: ${({ theme }) => theme.colors.accent.subtle};
@@ -180,39 +173,35 @@ export function ExpandableSearch({
 
   return (
     <Container>
-      <InputField $isOpen={isOpen}>
-        <InputWrapper>
-          <StyledInput
-            ref={inputRef}
-            placeholder={placeholder}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-          />
-          <IconsContainer>
-            <ChevronButton
-              aria-label="Previous result"
-              tabIndex={-1}
-              onMouseDown={(e) => e.preventDefault()}
-            >
-              <ChevronUp />
-            </ChevronButton>
-            <ChevronButton
-              aria-label="Next result"
-              tabIndex={-1}
-              onMouseDown={(e) => e.preventDefault()}
-            >
-              <ChevronDown />
-            </ChevronButton>
-            <IconButton
-              onClick={() => setIsOpen(false)}
-              aria-label="Close search"
-              tabIndex={-1}
-            >
-              <Search />
-            </IconButton>
-          </IconsContainer>
-        </InputWrapper>
-      </InputField>
+      <PillContainer $isOpen={isOpen}>
+        <StyledInput
+          ref={inputRef}
+          placeholder={placeholder}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+        />
+        <ChevronButton
+          aria-label="Previous result"
+          tabIndex={-1}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <ChevronUp />
+        </ChevronButton>
+        <ChevronButton
+          aria-label="Next result"
+          tabIndex={-1}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <ChevronDown />
+        </ChevronButton>
+        <IconButton
+          onClick={() => setIsOpen(false)}
+          aria-label="Close search"
+          tabIndex={-1}
+        >
+          <Search />
+        </IconButton>
+      </PillContainer>
       <SearchButton
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? 'Close search' : 'Open search'}
