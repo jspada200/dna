@@ -1,9 +1,9 @@
-import { Layout } from './components';
+import { Layout, ContentArea } from './components';
 
 function App() {
   return (
     <Layout>
-      <div />
+      <ContentArea />
     </Layout>
   );
 }

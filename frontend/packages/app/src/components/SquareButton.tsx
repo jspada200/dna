@@ -57,7 +57,11 @@ const StyledSquareButton = styled.button<{ $variant?: 'cta' | 'neutral' }>`
   }
 `;
 
-export function SquareButton({ children, variant = 'neutral', onClick }: SquareButtonProps) {
+export function SquareButton({
+  children,
+  variant = 'neutral',
+  onClick,
+}: SquareButtonProps) {
   return (
     <StyledSquareButton $variant={variant} onClick={onClick}>
       {children}

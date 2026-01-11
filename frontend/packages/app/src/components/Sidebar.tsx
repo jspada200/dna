@@ -1,5 +1,12 @@
 import styled from 'styled-components';
-import { PanelLeftClose, PanelLeft, Settings, Phone, Play, Upload } from 'lucide-react';
+import {
+  PanelLeftClose,
+  PanelLeft,
+  Settings,
+  Phone,
+  Play,
+  Upload,
+} from 'lucide-react';
 import { Button } from '@radix-ui/themes';
 import type { Version } from '@dna/core';
 import { Logo } from './Logo';

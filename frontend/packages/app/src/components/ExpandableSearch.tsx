@@ -29,7 +29,8 @@ const PillContainer = styled.div<{ $isOpen: boolean }>`
   width: ${({ $isOpen }) => ($isOpen ? '200px' : '0')};
   opacity: ${({ $isOpen }) => ($isOpen ? 1 : 0)};
   overflow: hidden;
-  transition: width 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
+  transition:
+    width 300ms cubic-bezier(0.34, 1.56, 0.64, 1),
     opacity 200ms ease-out,
     box-shadow ${({ theme }) => theme.transitions.base};
   pointer-events: ${({ $isOpen }) => ($isOpen ? 'auto' : 'none')};
@@ -205,7 +206,10 @@ export function ExpandableSearch({
       <SearchButton
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? 'Close search' : 'Open search'}
-        style={{ opacity: isOpen ? 0 : 1, pointerEvents: isOpen ? 'none' : 'auto' }}
+        style={{
+          opacity: isOpen ? 0 : 1,
+          pointerEvents: isOpen ? 'none' : 'auto',
+        }}
       >
         <Search />
       </SearchButton>

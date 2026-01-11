@@ -6,3 +6,8 @@ export { SplitButton } from './SplitButton';
 export { SquareButton } from './SquareButton';
 export { ExpandableSearch } from './ExpandableSearch';
 export { VersionCard } from './VersionCard';
+export { VersionHeader } from './VersionHeader';
+export { NoteEditor } from './NoteEditor';
+export { AssistantNote } from './AssistantNote';
+export { AssistantPanel } from './AssistantPanel';
+export { ContentArea } from './ContentArea';
