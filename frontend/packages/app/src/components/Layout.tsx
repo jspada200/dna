@@ -19,7 +19,7 @@ const Main = styled.main<{ $sidebarCollapsed: boolean }>`
     $sidebarCollapsed
       ? theme.sizes.sidebar.collapsed
       : theme.sizes.sidebar.expanded};
-  padding: 16px 24px;
+  padding: 24px 32px;
   transition: margin-left ${({ theme }) => theme.transitions.base};
   background:
     radial-gradient(

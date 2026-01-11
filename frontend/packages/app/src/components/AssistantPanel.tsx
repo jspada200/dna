@@ -24,8 +24,8 @@ const StyledTabsList = styled(Tabs.List)`
 `;
 
 const StyledTabsTrigger = styled(Tabs.Trigger)`
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
   font-weight: 500;
   font-family: ${({ theme }) => theme.fonts.sans};
   color: ${({ theme }) => theme.colors.text.muted};
@@ -46,13 +46,13 @@ const StyledTabsTrigger = styled(Tabs.Trigger)`
 `;
 
 const StyledTabsContent = styled(Tabs.Content)`
-  padding: 10px 0;
+  padding: 16px 0;
 `;
 
 const EmptyContent = styled.div`
-  padding: 16px;
+  padding: 24px;
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   color: ${({ theme }) => theme.colors.text.muted};
 `;
 

@@ -16,7 +16,7 @@ interface ContentAreaProps {
 const ContentWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
   max-width: 720px;
 `;
 

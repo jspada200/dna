@@ -5,6 +5,8 @@ export { UserAvatar } from './UserAvatar';
 export { SplitButton } from './SplitButton';
 export { SquareButton } from './SquareButton';
 export { ExpandableSearch } from './ExpandableSearch';
+export { ExpandableSection } from './ExpandableSection';
+export { NoteOptionsInline } from './NoteOptionsInline';
 export { VersionCard } from './VersionCard';
 export { VersionHeader } from './VersionHeader';
 export { NoteEditor } from './NoteEditor';

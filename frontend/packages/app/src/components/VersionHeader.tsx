@@ -1,8 +1,6 @@
 import styled from 'styled-components';
-import { Badge } from '@radix-ui/themes';
 import { ChevronLeft, Eye, ChevronRight, RotateCw } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
-import { SquareButton } from './SquareButton';
 import { SplitButton } from './SplitButton';
 
 interface VersionHeaderProps {
@@ -18,7 +16,7 @@ interface VersionHeaderProps {
 const HeaderWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 `;
 
 const TopBar = styled.div`
@@ -31,8 +29,8 @@ const BackButton = styled.button`
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 5px 10px;
-  font-size: 13px;
+  padding: 8px 12px;
+  font-size: 14px;
   font-weight: 500;
   font-family: ${({ theme }) => theme.fonts.sans};
   color: ${({ theme }) => theme.colors.text.secondary};
@@ -58,9 +56,9 @@ const TopBarActions = styled.div`
 const NextVersionButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 12px;
-  font-size: 13px;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
   font-weight: 500;
   font-family: ${({ theme }) => theme.fonts.sans};
   color: ${({ theme }) => theme.colors.text.primary};
@@ -79,8 +77,8 @@ const RefreshButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   background: transparent;
   border: 1px dashed ${({ theme }) => theme.colors.border.default};
   border-radius: ${({ theme }) => theme.radii.md};
@@ -97,12 +95,12 @@ const RefreshButton = styled.button`
 
 const MainContent = styled.div`
   display: flex;
-  gap: 16px;
+  gap: 24px;
 `;
 
 const Thumbnail = styled.div`
-  width: 200px;
-  height: 120px;
+  width: 280px;
+  height: 180px;
   background: ${({ theme }) => theme.colors.bg.overlay};
   border-radius: ${({ theme }) => theme.radii.lg};
   flex-shrink: 0;
@@ -119,12 +117,12 @@ const MetadataSection = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 6px;
+  gap: 12px;
 `;
 
 const VersionTitle = styled.h1`
   margin: 0;
-  font-size: 20px;
+  font-size: 28px;
   font-weight: 600;
   font-family: ${({ theme }) => theme.fonts.sans};
   color: ${({ theme }) => theme.colors.text.primary};
@@ -137,28 +135,28 @@ const VersionTitleCode = styled.span`
 const MetadataRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 `;
 
 const MetadataLabel = styled.span`
-  font-size: 12px;
+  font-size: 14px;
   color: ${({ theme }) => theme.colors.text.muted};
-  min-width: 90px;
+  min-width: 110px;
 `;
 
 const MetadataValue = styled.span`
-  font-size: 12px;
+  font-size: 14px;
   color: ${({ theme }) => theme.colors.text.primary};
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 `;
 
 const StatusBadge = styled.span`
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  font-size: 11px;
+  padding: 4px 10px;
+  font-size: 12px;
   font-weight: 500;
   color: ${({ theme }) => theme.colors.text.primary};
   background: ${({ theme }) => theme.colors.bg.surface};
@@ -169,8 +167,8 @@ const StatusBadge = styled.span`
 const LinkBadge = styled.span`
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  font-size: 11px;
+  padding: 4px 10px;
+  font-size: 12px;
   font-weight: 500;
   color: ${({ theme }) => theme.colors.text.primary};
   background: ${({ theme }) => theme.colors.bg.surface};

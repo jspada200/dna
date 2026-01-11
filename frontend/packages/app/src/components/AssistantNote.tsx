@@ -8,7 +8,7 @@ interface AssistantNoteProps {
 const NoteWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 `;
 
 const NoteHeader = styled.div`
@@ -20,8 +20,8 @@ const NoteHeader = styled.div`
 const NoteTitle = styled.div`
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 14px;
   font-weight: 500;
   font-family: ${({ theme }) => theme.fonts.sans};
   color: ${({ theme }) => theme.colors.text.primary};
@@ -31,8 +31,8 @@ const BotIcon = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   background: ${({ theme }) => theme.colors.bg.overlay};
   border-radius: ${({ theme }) => theme.radii.sm};
   color: ${({ theme }) => theme.colors.text.secondary};
@@ -48,8 +48,8 @@ const RegenerateButton = styled.button`
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
-  font-size: 11px;
+  padding: 6px 12px;
+  font-size: 13px;
   font-weight: 500;
   font-family: ${({ theme }) => theme.fonts.sans};
   color: ${({ theme }) => theme.colors.text.primary};
@@ -68,8 +68,8 @@ const ExpandButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   background: ${({ theme }) => theme.colors.accent.main};
   border: none;
   border-radius: ${({ theme }) => theme.radii.sm};
@@ -83,26 +83,26 @@ const ExpandButton = styled.button`
 `;
 
 const NoteContent = styled.div`
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
   font-family: ${({ theme }) => theme.fonts.sans};
   color: ${({ theme }) => theme.colors.text.secondary};
-  padding-left: 26px;
+  padding-left: 32px;
 `;
 
 const NoteActions = styled.div`
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding-left: 26px;
+  gap: 8px;
+  padding-left: 32px;
 `;
 
 const CopyButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 28px;
+  height: 28px;
   background: transparent;
   border: 1px dashed ${({ theme }) => theme.colors.border.default};
   border-radius: ${({ theme }) => theme.radii.sm};
