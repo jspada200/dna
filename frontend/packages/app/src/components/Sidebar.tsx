@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import styled, { css } from 'styled-components';
-import { PanelLeftClose, PanelLeft, Search } from 'lucide-react';
-import { Button, TextField, IconButton } from '@radix-ui/themes';
+import styled from 'styled-components';
+import { PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Button } from '@radix-ui/themes';
 import { Logo } from './Logo';
 import { UserAvatar } from './UserAvatar';
 import { SplitButton } from './SplitButton';
+import { ExpandableSearch } from './ExpandableSearch';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -89,35 +89,10 @@ const ToolbarLeft = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
-`;
-
-const ToolbarRight = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
-const searchExpandKeyframes = css`
-  @keyframes searchExpand {
-    from {
-      width: 32px;
-      opacity: 0;
-    }
-    to {
-      width: 160px;
-      opacity: 1;
-    }
-  }
-`;
-
-const SearchField = styled(TextField.Root)`
-  ${searchExpandKeyframes}
-  width: 160px;
-  animation: searchExpand ${({ theme }) => theme.transitions.fast} ease-out;
+  flex-shrink: 0;
 `;
 
 export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
-  const [searchOpen, setSearchOpen] = useState(false);
-
   const playlistMenuItems = [
     { label: 'Replace Playlist' },
     { label: 'Add Version' },
@@ -153,25 +128,7 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
             </SplitButton>
           </ToolbarLeft>
 
-          <ToolbarRight>
-            {searchOpen ? (
-              <SearchField
-                size="2"
-                placeholder="Search..."
-                autoFocus
-                onBlur={() => setSearchOpen(false)}
-              />
-            ) : (
-              <IconButton
-                size="2"
-                variant="ghost"
-                color="gray"
-                onClick={() => setSearchOpen(true)}
-              >
-                <Search size={18} />
-              </IconButton>
-            )}
-          </ToolbarRight>
+          <ExpandableSearch placeholder="Search versions..." />
         </Toolbar>
       )}
     </SidebarWrapper>
