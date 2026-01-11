@@ -1,10 +1,13 @@
 import styled from 'styled-components';
-import { PanelLeftClose, PanelLeft, Settings, Phone, Play } from 'lucide-react';
+import { PanelLeftClose, PanelLeft, Settings, Phone, Play, Upload } from 'lucide-react';
 import { Button } from '@radix-ui/themes';
+import type { Version } from '@dna/core';
 import { Logo } from './Logo';
 import { UserAvatar } from './UserAvatar';
 import { SplitButton } from './SplitButton';
 import { ExpandableSearch } from './ExpandableSearch';
+import { SquareButton } from './SquareButton';
+import { VersionCard } from './VersionCard';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -136,6 +139,90 @@ const SettingsButton = styled.button`
   }
 `;
 
+const CollapsedToolbar = styled.div`
+  display: flex;
+  justify-content: center;
+  padding: 12px 8px;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.border.subtle};
+`;
+
+const CollapsedFooter = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  border-top: 1px solid ${({ theme }) => theme.colors.border.subtle};
+  gap: 12px;
+`;
+
+const VersionCardList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+`;
+
+const placeholderVersions: Array<{
+  version: Version;
+  artistName: string;
+  department: string;
+  selected?: boolean;
+  inReview?: boolean;
+}> = [
+  {
+    version: { id: '1', name: 'TST0010 - 000001', path: '', createdAt: '' },
+    artistName: 'Jane Doe',
+    department: 'Lighting',
+  },
+  {
+    version: { id: '2', name: 'TST0010 - 000002', path: '', createdAt: '' },
+    artistName: 'John Smith',
+    department: 'Animation',
+    selected: true,
+  },
+  {
+    version: { id: '3', name: 'TST0010 - 000003', path: '', createdAt: '' },
+    artistName: 'Emily Chen',
+    department: 'Compositing',
+    inReview: true,
+  },
+  {
+    version: { id: '4', name: 'TST0020 - 000001', path: '', createdAt: '' },
+    artistName: 'Michael Brown',
+    department: 'FX',
+  },
+  {
+    version: { id: '5', name: 'TST0020 - 000002', path: '', createdAt: '' },
+    artistName: 'Sarah Wilson',
+    department: 'Lighting',
+  },
+  {
+    version: { id: '6', name: 'TST0030 - 000001', path: '', createdAt: '' },
+    artistName: 'David Lee',
+    department: 'Animation',
+  },
+  {
+    version: { id: '7', name: 'TST0030 - 000002', path: '', createdAt: '' },
+    artistName: 'Lisa Garcia',
+    department: 'Rigging',
+  },
+  {
+    version: { id: '8', name: 'TST0040 - 000001', path: '', createdAt: '' },
+    artistName: 'Kevin Martinez',
+    department: 'Texturing',
+  },
+  {
+    version: { id: '9', name: 'TST0040 - 000002', path: '', createdAt: '' },
+    artistName: 'Amanda Taylor',
+    department: 'Modeling',
+  },
+  {
+    version: { id: '10', name: 'TST0050 - 000001', path: '', createdAt: '' },
+    artistName: 'Chris Johnson',
+    department: 'Layout',
+  },
+];
+
 export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
   const playlistMenuItems = [
     { label: 'Replace Playlist' },
@@ -164,7 +251,15 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
         </HeaderActions>
       </Header>
 
-      {!collapsed && (
+      {collapsed ? (
+        <CollapsedToolbar>
+          <SplitButton
+            leftSlot={<Phone size={14} />}
+            rightSlot={<Play size={14} />}
+            onRightClick={() => {}}
+          />
+        </CollapsedToolbar>
+      ) : (
         <Toolbar>
           <ToolbarLeft>
             <SplitButton menuItems={playlistMenuItems}>
@@ -176,9 +271,35 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
         </Toolbar>
       )}
 
-      <ScrollableContent />
+      <ScrollableContent>
+        {!collapsed && (
+          <VersionCardList>
+            {placeholderVersions.map((item) => (
+              <VersionCard
+                key={item.version.id}
+                version={item.version}
+                artistName={item.artistName}
+                department={item.department}
+                selected={item.selected}
+                inReview={item.inReview}
+              />
+            ))}
+          </VersionCardList>
+        )}
+      </ScrollableContent>
 
-      {!collapsed && (
+      {collapsed ? (
+        <CollapsedFooter>
+          <SquareButton variant="cta">
+            <Upload />
+            Publish
+          </SquareButton>
+          <SquareButton variant="neutral">
+            <Settings />
+            Settings
+          </SquareButton>
+        </CollapsedFooter>
+      ) : (
         <Footer $collapsed={collapsed}>
           <SplitButton
             leftSlot={<Phone size={14} />}

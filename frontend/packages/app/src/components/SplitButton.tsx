@@ -9,7 +9,7 @@ interface SplitButtonMenuItem {
 }
 
 interface SplitButtonProps {
-  children: ReactNode;
+  children?: ReactNode;
   onClick?: () => void;
   menuItems?: SplitButtonMenuItem[];
   onRightClick?: () => void;

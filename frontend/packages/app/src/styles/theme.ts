@@ -39,7 +39,7 @@ export const theme = {
   sizes: {
     sidebar: {
       expanded: '420px',
-      collapsed: '120px',
+      collapsed: '80px',
     },
   },
   radii: {
