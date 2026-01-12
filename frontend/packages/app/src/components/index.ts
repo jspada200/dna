@@ -15,3 +15,8 @@ export { NoteEditor } from './NoteEditor';
 export { AssistantNote } from './AssistantNote';
 export { AssistantPanel } from './AssistantPanel';
 export { ContentArea } from './ContentArea';
+export {
+  StyledTextField,
+  StyledSelectTrigger,
+  StyledSelectContent,
+} from './FormInputs';

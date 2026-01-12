@@ -177,6 +177,20 @@ const VersionCardList = styled.div`
   padding: 12px 16px;
 `;
 
+const VersionListContainer = styled.div`
+  position: relative;
+`;
+
+const RefetchOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${({ theme }) => theme.colors.bg.base}cc;
+  z-index: 10;
+`;
+
 const StateContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -191,6 +205,7 @@ const StateContainer = styled.div`
 const LoadingSpinner = styled(Loader2)`
   width: 24px;
   height: 24px;
+  color: ${({ theme }) => theme.colors.accent.main};
   animation: spin 1s linear infinite;
 
   @keyframes spin {
@@ -225,6 +240,7 @@ export function Sidebar({
   const {
     data: versions,
     isLoading,
+    isFetching,
     isError,
     error,
     refetch,
@@ -272,21 +288,30 @@ export function Sidebar({
       );
     }
 
+    const isRefetching = isFetching && !isLoading;
+
     return (
-      <VersionCardList>
-        {versions.map((version) => (
-          <VersionCard
-            key={version.id}
-            version={version}
-            artistName={version.user?.name}
-            department={version.task?.pipeline_step?.name}
-            thumbnailUrl={version.thumbnail}
-            selected={version.id === selectedVersionId}
-            inReview={false}
-            onClick={() => onVersionSelect?.(version)}
-          />
-        ))}
-      </VersionCardList>
+      <VersionListContainer>
+        {isRefetching && (
+          <RefetchOverlay>
+            <LoadingSpinner />
+          </RefetchOverlay>
+        )}
+        <VersionCardList>
+          {versions.map((version) => (
+            <VersionCard
+              key={version.id}
+              version={version}
+              artistName={version.user?.name}
+              department={version.task?.pipeline_step?.name}
+              thumbnailUrl={version.thumbnail}
+              selected={version.id === selectedVersionId}
+              inReview={false}
+              onClick={() => onVersionSelect?.(version)}
+            />
+          ))}
+        </VersionCardList>
+      </VersionListContainer>
     );
   };
 
