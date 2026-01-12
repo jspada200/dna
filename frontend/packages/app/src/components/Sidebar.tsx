@@ -227,6 +227,7 @@ export function Sidebar({
     isLoading,
     isError,
     error,
+    refetch,
   } = useGetVersionsForPlaylist(playlistId);
 
   const { data: user } = useGetUserByEmail(userEmail);
@@ -322,7 +323,7 @@ export function Sidebar({
       ) : (
         <Toolbar>
           <ToolbarLeft>
-            <SplitButton menuItems={playlistMenuItems}>
+            <SplitButton menuItems={playlistMenuItems} onClick={() => refetch()}>
               Reload Playlist
             </SplitButton>
           </ToolbarLeft>
