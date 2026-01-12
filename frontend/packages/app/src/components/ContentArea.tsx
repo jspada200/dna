@@ -6,6 +6,9 @@ import { AssistantPanel } from './AssistantPanel';
 
 interface ContentAreaProps {
   version?: Version | null;
+  versions?: Version[];
+  onVersionSelect?: (version: Version) => void;
+  onRefresh?: () => void;
 }
 
 const ContentWrapper = styled.div`
@@ -60,7 +63,33 @@ function getStatusLabel(status?: string): string {
   return status ? statusMap[status] || status : 'Unknown';
 }
 
-export function ContentArea({ version }: ContentAreaProps) {
+const IN_REVIEW_STATUS = 'rev';
+
+export function ContentArea({ version, versions = [], onVersionSelect, onRefresh }: ContentAreaProps) {
+  const currentIndex = version ? versions.findIndex(v => v.id === version.id) : -1;
+  const canGoBack = currentIndex > 0;
+  const canGoNext = currentIndex >= 0 && currentIndex < versions.length - 1;
+  const inReviewVersion = versions.find(v => v.status === IN_REVIEW_STATUS);
+  const hasInReview = !!inReviewVersion;
+
+  const handleBack = () => {
+    if (canGoBack && onVersionSelect) {
+      onVersionSelect(versions[currentIndex - 1]);
+    }
+  };
+
+  const handleNext = () => {
+    if (canGoNext && onVersionSelect) {
+      onVersionSelect(versions[currentIndex + 1]);
+    }
+  };
+
+  const handleInReview = () => {
+    if (inReviewVersion && onVersionSelect) {
+      onVersionSelect(inReviewVersion);
+    }
+  };
+
   if (!version) {
     return (
       <ContentWrapper>
@@ -89,10 +118,18 @@ export function ContentArea({ version }: ContentAreaProps) {
       <VersionHeader
         shotCode={entityName}
         versionNumber={versionNumber}
+        submittedBy={version.user?.name}
         dateSubmitted={formatDate(version.created_at as string)}
         versionStatus={getStatusLabel(version.status)}
         thumbnailUrl={version.thumbnail}
         links={links}
+        onBack={handleBack}
+        onNext={handleNext}
+        onInReview={handleInReview}
+        canGoBack={canGoBack}
+        canGoNext={canGoNext}
+        hasInReview={hasInReview}
+        onRefresh={onRefresh}
       />
       <NoteEditor />
       <AssistantPanel />

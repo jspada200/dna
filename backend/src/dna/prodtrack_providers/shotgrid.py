@@ -5,7 +5,14 @@ from typing import Any, Optional
 
 from shotgun_api3 import Shotgun
 
-from dna.models.entity import ENTITY_MODELS, EntityBase, Playlist, Project, Version
+from dna.models.entity import (
+    ENTITY_MODELS,
+    EntityBase,
+    Playlist,
+    Project,
+    User,
+    Version,
+)
 from dna.prodtrack_providers.prodtrack_provider_base import ProdtrackProviderBase
 
 # Field Mappings map the DNA entity to the SG entity.
@@ -93,6 +100,16 @@ FIELD_MAPPING = {
             "updated_at": "updated_at",
         },
         "linked_fields": {"versions": "versions"},
+    },
+    "user": {
+        "entity_id": "HumanUser",
+        "fields": {
+            "id": "id",
+            "name": "name",
+            "email": "email",
+            "login": "login",
+        },
+        "linked_fields": {},
     },
 }
 
@@ -351,6 +368,35 @@ class ShotgridProvider(ProdtrackProviderBase):
             )
             for sg_entity in sg_results
         ]
+
+    def get_user_by_email(self, user_email: str) -> User:
+        """Get a user by their email address.
+
+        Args:
+            user_email: The email address of the user
+
+        Returns:
+            User entity with name, email, and login
+
+        Raises:
+            ValueError: If user is not found
+        """
+        if not self.sg:
+            raise ValueError("Not connected to ShotGrid")
+
+        sg_user = self.sg.find_one(
+            "HumanUser",
+            filters=[["email", "is", user_email]],
+            fields=["id", "name", "email", "login"],
+        )
+
+        if not sg_user:
+            raise ValueError(f"User not found: {user_email}")
+
+        entity_mapping = FIELD_MAPPING["user"]
+        return self._convert_sg_entity_to_dna_entity(
+            sg_user, entity_mapping, "user", resolve_links=False
+        )
 
     def get_projects_for_user(self, user_email: str) -> list[Project]:
         """Get projects accessible by a user.

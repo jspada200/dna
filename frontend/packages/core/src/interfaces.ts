@@ -19,6 +19,12 @@ export interface PipelineStep {
   name?: string;
 }
 
+export interface UserReference {
+  id: number;
+  name: string;
+  type: string;
+}
+
 export interface EntityBase {
   id: number;
   type: EntityType;
@@ -67,7 +73,7 @@ export interface Version extends EntityBase {
   name?: string;
   description?: string;
   status?: string;
-  user?: unknown;
+  user?: UserReference;
   created_at?: string;
   updated_at?: string;
   movie_path?: string;
@@ -89,7 +95,23 @@ export interface Playlist extends EntityBase {
   versions: Version[];
 }
 
-export type DNAEntity = Project | Shot | Asset | Note | Task | Version | Playlist;
+export interface User {
+  id: number;
+  type: 'User';
+  name?: string;
+  email?: string;
+  login?: string;
+}
+
+export type DNAEntity =
+  | Project
+  | Shot
+  | Asset
+  | Note
+  | Task
+  | Version
+  | Playlist
+  | User;
 
 export interface EntityLink {
   type: string;
@@ -113,4 +135,8 @@ export interface GetPlaylistsForProjectParams {
 
 export interface GetVersionsForPlaylistParams {
   playlistId: number;
+}
+
+export interface GetUserByEmailParams {
+  userEmail: string;
 }

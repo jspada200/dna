@@ -212,8 +212,19 @@ class Playlist(EntityBase):
         return v if v is not None else []
 
 
+class User(EntityBase):
+    """User entity model.
+
+    Represents a human user in the production tracking system.
+    """
+
+    name: Optional[str] = Field(default=None, description="User's full name")
+    email: Optional[str] = Field(default=None, description="User's email address")
+    login: Optional[str] = Field(default=None, description="User's login/username")
+
+
 # Type alias for any DNA entity
-DNAEntity = Union[Project, Shot, Asset, Note, Task, Version, Playlist]
+DNAEntity = Union[Project, Shot, Asset, Note, Task, Version, Playlist, User]
 
 # Entity type name to model class mapping
 ENTITY_MODELS: dict[str, type[EntityBase]] = {
@@ -224,4 +235,5 @@ ENTITY_MODELS: dict[str, type[EntityBase]] = {
     "task": Task,
     "version": Version,
     "playlist": Playlist,
+    "user": User,
 }

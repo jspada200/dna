@@ -9,6 +9,7 @@ interface LayoutProps {
   playlistId: number | null;
   selectedVersionId?: number | null;
   onVersionSelect?: (version: Version) => void;
+  userEmail: string;
 }
 
 const COLLAPSE_BREAKPOINT = 1024;
@@ -45,6 +46,7 @@ export function Layout({
   playlistId,
   selectedVersionId,
   onVersionSelect,
+  userEmail,
 }: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.innerWidth < COLLAPSE_BREAKPOINT
@@ -70,6 +72,7 @@ export function Layout({
         playlistId={playlistId}
         selectedVersionId={selectedVersionId}
         onVersionSelect={onVersionSelect}
+        userEmail={userEmail}
       />
       <Main $sidebarCollapsed={sidebarCollapsed}>{children}</Main>
     </LayoutWrapper>

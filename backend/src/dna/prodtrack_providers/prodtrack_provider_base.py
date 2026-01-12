@@ -2,7 +2,7 @@ import os
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from dna.models.entity import EntityBase, Playlist, Project, Version
+    from dna.models.entity import EntityBase, Playlist, Project, User, Version
 
 
 class ProdtrackProviderBase:
@@ -34,6 +34,20 @@ class ProdtrackProviderBase:
 
         Returns:
             List of matching entities
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def get_user_by_email(self, user_email: str) -> "User":
+        """Get a user by their email address.
+
+        Args:
+            user_email: The email address of the user
+
+        Returns:
+            User entity with name, email, and login
+
+        Raises:
+            ValueError: If user is not found
         """
         raise NotImplementedError("Subclasses must implement this method.")
 

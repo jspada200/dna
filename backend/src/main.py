@@ -15,6 +15,7 @@ from dna.models import (
     Project,
     Shot,
     Task,
+    User,
     Version,
 )
 from dna.models.entity import ENTITY_MODELS, EntityBase
@@ -81,6 +82,10 @@ tags_metadata = [
     {
         "name": "Projects",
         "description": "Operations for managing projects",
+    },
+    {
+        "name": "Users",
+        "description": "Operations for managing users",
     },
     {
         "name": "Transcription",
@@ -340,6 +345,26 @@ async def find_entities(
         return provider.find(entity_type, filters)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# -----------------------------------------------------------------------------
+# User endpoints
+# -----------------------------------------------------------------------------
+
+
+@app.get(
+    "/users/{user_email}",
+    tags=["Users"],
+    summary="Get user by email",
+    description="Retrieve user information by their email address.",
+    response_model=User,
+)
+async def get_user_by_email(user_email: str, provider: ProdtrackProviderDep) -> User:
+    """Get a user by their email address."""
+    try:
+        return provider.get_user_by_email(user_email)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # -----------------------------------------------------------------------------

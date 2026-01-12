@@ -13,6 +13,7 @@ from dna.models.entity import (
     Project,
     Shot,
     Task,
+    User,
     Version,
 )
 from dna.models.requests import (
@@ -31,6 +32,7 @@ __all__ = [
     "Task",
     "Version",
     "Playlist",
+    "User",
     "DNAEntity",
     "ENTITY_MODELS",
     "EntityLink",

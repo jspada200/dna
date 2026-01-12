@@ -1,4 +1,4 @@
-import { ApiHandler, Playlist, Project, Version } from '@dna/core';
+import { ApiHandler, Playlist, Project, User, Version } from '@dna/core';
 import { useQuery } from '@tanstack/react-query';
 
 const apiHandler = new ApiHandler({
@@ -30,9 +30,18 @@ function useGetVersionsForPlaylist(playlistId: number | null) {
   });
 }
 
+function useGetUserByEmail(userEmail: string | null) {
+  return useQuery<User, Error>({
+    queryKey: ['user', userEmail],
+    queryFn: () => apiHandler.getUserByEmail({ userEmail: userEmail! }),
+    enabled: !!userEmail,
+  });
+}
+
 export {
   useGetProjectsForUser,
   useGetPlaylistsForProject,
   useGetVersionsForPlaylist,
+  useGetUserByEmail,
   apiHandler,
 };

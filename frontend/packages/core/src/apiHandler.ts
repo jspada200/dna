@@ -3,8 +3,10 @@ import {
   GetProjectsForUserParams,
   GetPlaylistsForProjectParams,
   GetVersionsForPlaylistParams,
+  GetUserByEmailParams,
   Playlist,
   Project,
+  User as DNAUser,
   Version,
 } from './interfaces';
 
@@ -96,6 +98,10 @@ class ApiHandler {
 
   async getVersionsForPlaylist(params: GetVersionsForPlaylistParams): Promise<Version[]> {
     return this.get<Version[]>(`/playlists/${params.playlistId}/versions`);
+  }
+
+  async getUserByEmail(params: GetUserByEmailParams): Promise<DNAUser> {
+    return this.get<DNAUser>(`/users/${encodeURIComponent(params.userEmail)}`);
   }
 }
 

@@ -11,6 +11,13 @@ interface VersionHeaderProps {
   versionStatus?: string;
   thumbnailUrl?: string;
   links?: string[];
+  onBack?: () => void;
+  onNext?: () => void;
+  onInReview?: () => void;
+  onRefresh?: () => void;
+  canGoBack?: boolean;
+  canGoNext?: boolean;
+  hasInReview?: boolean;
 }
 
 const HeaderWrapper = styled.div`
@@ -40,10 +47,15 @@ const BackButton = styled.button`
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: ${({ theme }) => theme.colors.bg.surfaceHover};
     color: ${({ theme }) => theme.colors.text.primary};
     border-color: ${({ theme }) => theme.colors.border.strong};
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 `;
 
@@ -68,10 +80,15 @@ const InReviewButton = styled.button`
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: ${({ theme }) => theme.colors.bg.surfaceHover};
     color: ${({ theme }) => theme.colors.text.primary};
     border-color: ${({ theme }) => theme.colors.border.strong};
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 `;
 
@@ -90,8 +107,13 @@ const NextVersionButton = styled.button`
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: ${({ theme }) => theme.colors.accent.hover};
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 `;
 
@@ -213,6 +235,13 @@ export function VersionHeader({
   versionStatus,
   thumbnailUrl,
   links = [],
+  onBack,
+  onNext,
+  onInReview,
+  onRefresh,
+  canGoBack = true,
+  canGoNext = true,
+  hasInReview = true,
 }: VersionHeaderProps) {
   const displayTitle = shotCode && versionNumber 
     ? `${shotCode} - ` 
@@ -222,20 +251,20 @@ export function VersionHeader({
   return (
     <HeaderWrapper>
       <TopBar>
-        <BackButton>
+        <BackButton onClick={onBack} disabled={!canGoBack}>
           <ChevronLeft size={16} />
           Back
         </BackButton>
         <TopBarActions>
-          <InReviewButton>
+          <InReviewButton onClick={onInReview} disabled={!hasInReview}>
             <Eye size={14} />
             In Review
           </InReviewButton>
-          <NextVersionButton>
+          <NextVersionButton onClick={onNext} disabled={!canGoNext}>
             Next Version
             <ChevronRight size={16} />
           </NextVersionButton>
-          <RefreshButton>
+          <RefreshButton onClick={onRefresh} title="Refresh version info">
             <RotateCw size={16} />
           </RefreshButton>
         </TopBarActions>

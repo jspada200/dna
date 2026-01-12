@@ -17,7 +17,7 @@ import { SplitButton } from './SplitButton';
 import { ExpandableSearch } from './ExpandableSearch';
 import { SquareButton } from './SquareButton';
 import { VersionCard } from './VersionCard';
-import { useGetVersionsForPlaylist } from '../api';
+import { useGetVersionsForPlaylist, useGetUserByEmail } from '../api';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -26,6 +26,7 @@ interface SidebarProps {
   playlistId: number | null;
   selectedVersionId?: number | null;
   onVersionSelect?: (version: Version) => void;
+  userEmail: string;
 }
 
 const SidebarWrapper = styled.aside<{ $collapsed: boolean }>`
@@ -219,6 +220,7 @@ export function Sidebar({
   playlistId,
   selectedVersionId,
   onVersionSelect,
+  userEmail,
 }: SidebarProps) {
   const {
     data: versions,
@@ -226,6 +228,8 @@ export function Sidebar({
     isError,
     error,
   } = useGetVersionsForPlaylist(playlistId);
+
+  const { data: user } = useGetUserByEmail(userEmail);
 
   const playlistMenuItems = [
     { label: 'Replace Playlist', onSelect: onReplacePlaylist },
@@ -273,7 +277,7 @@ export function Sidebar({
           <VersionCard
             key={version.id}
             version={version}
-            artistName={undefined}
+            artistName={version.user?.name}
             department={version.task?.pipeline_step?.name}
             thumbnailUrl={version.thumbnail}
             selected={version.id === selectedVersionId}
@@ -295,7 +299,7 @@ export function Sidebar({
               <Button size="2" variant="solid" color="violet">
                 Publish Notes
               </Button>
-              <UserAvatar name="Jane Doe" size="2" />
+              <UserAvatar name={user?.name ?? userEmail} size="2" />
             </>
           )}
           <CollapseButton

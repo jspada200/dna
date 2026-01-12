@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Playlist, Project, Version } from '@dna/core';
 import { Layout, ContentArea, ProjectSelector } from './components';
+import { useGetVersionsForPlaylist } from './api';
 
 function App() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -9,6 +10,20 @@ function App() {
   );
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<Version | null>(null);
+
+  const { data: versions = [], refetch } = useGetVersionsForPlaylist(
+    selectedPlaylist?.id ?? null
+  );
+
+  const handleRefresh = async () => {
+    const result = await refetch();
+    if (result.data && selectedVersion) {
+      const updatedVersion = result.data.find(v => v.id === selectedVersion.id);
+      if (updatedVersion) {
+        setSelectedVersion(updatedVersion);
+      }
+    }
+  };
 
   const handleSelectionComplete = (
     project: Project,
@@ -39,8 +54,14 @@ function App() {
       playlistId={selectedPlaylist.id}
       selectedVersionId={selectedVersion?.id}
       onVersionSelect={handleVersionSelect}
+      userEmail={userEmail}
     >
-      <ContentArea version={selectedVersion} />
+      <ContentArea
+        version={selectedVersion}
+        versions={versions}
+        onVersionSelect={handleVersionSelect}
+        onRefresh={handleRefresh}
+      />
     </Layout>
   );
 }
