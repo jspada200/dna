@@ -51,7 +51,6 @@ const ChipValue = styled.span`
 
 const EmptyValue = styled.span`
   color: ${({ theme }) => theme.colors.text.muted};
-  font-style: italic;
 `;
 
 const EditButton = styled.button`
@@ -216,9 +215,6 @@ export function NoteOptionsInline({
   const [localLinks, setLocalLinks] = useState(linksValue);
   const [localStatus, setLocalStatus] = useState(versionStatus);
 
-  const hasAnyValue =
-    localTo || localCc || localSubject || localLinks || localStatus;
-
   if (isEditing) {
     return (
       <Wrapper>
@@ -313,37 +309,46 @@ export function NoteOptionsInline({
   return (
     <Wrapper>
       <DisplayRow>
-        {localTo && (
-          <OptionChip>
-            <ChipLabel>To:</ChipLabel>
+        <OptionChip>
+          <ChipLabel>To:</ChipLabel>
+          {localTo ? (
             <ChipValue>{localTo}</ChipValue>
-          </OptionChip>
-        )}
-        {localCc && (
-          <OptionChip>
-            <ChipLabel>CC:</ChipLabel>
+          ) : (
+            <EmptyValue>—</EmptyValue>
+          )}
+        </OptionChip>
+        <OptionChip>
+          <ChipLabel>CC:</ChipLabel>
+          {localCc ? (
             <ChipValue>{localCc}</ChipValue>
-          </OptionChip>
-        )}
-        {localSubject && (
-          <OptionChip>
-            <ChipLabel>Subject:</ChipLabel>
+          ) : (
+            <EmptyValue>—</EmptyValue>
+          )}
+        </OptionChip>
+        <OptionChip>
+          <ChipLabel>Subject:</ChipLabel>
+          {localSubject ? (
             <ChipValue>{localSubject}</ChipValue>
-          </OptionChip>
-        )}
-        {localLinks && (
-          <OptionChip>
-            <ChipLabel>Links:</ChipLabel>
+          ) : (
+            <EmptyValue>—</EmptyValue>
+          )}
+        </OptionChip>
+        <OptionChip>
+          <ChipLabel>Links:</ChipLabel>
+          {localLinks ? (
             <ChipValue>{localLinks}</ChipValue>
-          </OptionChip>
-        )}
-        {localStatus && (
-          <OptionChip>
-            <ChipLabel>Status:</ChipLabel>
+          ) : (
+            <EmptyValue>—</EmptyValue>
+          )}
+        </OptionChip>
+        <OptionChip>
+          <ChipLabel>Status:</ChipLabel>
+          {localStatus ? (
             <ChipValue>{statusLabels[localStatus] || localStatus}</ChipValue>
-          </OptionChip>
-        )}
-        {!hasAnyValue && <EmptyValue>No options set</EmptyValue>}
+          ) : (
+            <EmptyValue>—</EmptyValue>
+          )}
+        </OptionChip>
         <EditButton
           onClick={() => setIsEditing(true)}
           title="Edit note options"

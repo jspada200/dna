@@ -1,7 +1,6 @@
 import styled from 'styled-components';
 import { ChevronLeft, Eye, ChevronRight, RotateCw } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
-import { SplitButton } from './SplitButton';
 
 interface VersionHeaderProps {
   shotCode?: string;
@@ -51,6 +50,28 @@ const TopBarActions = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
+`;
+
+const InReviewButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: ${({ theme }) => theme.fonts.sans};
+  color: ${({ theme }) => theme.colors.text.secondary};
+  background: transparent;
+  border: 1px solid ${({ theme }) => theme.colors.border.default};
+  border-radius: ${({ theme }) => theme.radii.md};
+  cursor: pointer;
+  transition: all ${({ theme }) => theme.transitions.fast};
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.bg.surfaceHover};
+    color: ${({ theme }) => theme.colors.text.primary};
+    border-color: ${({ theme }) => theme.colors.border.strong};
+  }
 `;
 
 const NextVersionButton = styled.button`
@@ -199,7 +220,10 @@ export function VersionHeader({
           Back
         </BackButton>
         <TopBarActions>
-          <SplitButton leftSlot={<Eye size={14} />}>In Review</SplitButton>
+          <InReviewButton>
+            <Eye size={14} />
+            In Review
+          </InReviewButton>
           <NextVersionButton>
             Next Version
             <ChevronRight size={16} />
