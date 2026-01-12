@@ -1,10 +1,12 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import styled from 'styled-components';
 import { Sidebar } from './Sidebar';
 
 interface LayoutProps {
   children: ReactNode;
 }
+
+const COLLAPSE_BREAKPOINT = 1024;
 
 const LayoutWrapper = styled.div`
   display: flex;
@@ -33,7 +35,20 @@ const Main = styled.main<{ $sidebarCollapsed: boolean }>`
 `;
 
 export function Layout({ children }: LayoutProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => window.innerWidth < COLLAPSE_BREAKPOINT
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < COLLAPSE_BREAKPOINT) {
+        setSidebarCollapsed(true);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <LayoutWrapper>

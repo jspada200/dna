@@ -22,12 +22,19 @@ const EditorWrapper = styled.div`
   border-radius: ${({ theme }) => theme.radii.lg};
 `;
 
+const EditorHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+`;
+
 const EditorTitle = styled.h2`
   margin: 0;
   font-size: 16px;
   font-weight: 600;
   font-family: ${({ theme }) => theme.fonts.sans};
   color: ${({ theme }) => theme.colors.text.primary};
+  flex-shrink: 0;
 `;
 
 export function NoteEditor({
@@ -41,15 +48,16 @@ export function NoteEditor({
 }: NoteEditorProps) {
   return (
     <EditorWrapper>
-      <EditorTitle>New Note</EditorTitle>
-
-      <NoteOptionsInline
-        toValue={toValue}
-        ccValue={ccValue}
-        subjectValue={subjectValue}
-        linksValue={linksValue}
-        versionStatus={versionStatus}
-      />
+      <EditorHeader>
+        <EditorTitle>New Note</EditorTitle>
+        <NoteOptionsInline
+          toValue={toValue}
+          ccValue={ccValue}
+          subjectValue={subjectValue}
+          linksValue={linksValue}
+          versionStatus={versionStatus}
+        />
+      </EditorHeader>
 
       <MarkdownEditor
         value={notesValue}

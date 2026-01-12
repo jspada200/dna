@@ -1,5 +1,6 @@
 import styled from 'styled-components';
-import { Bot, ChevronDown, Copy, ClipboardCopy } from 'lucide-react';
+import { Bot, MessageSquare, Copy, ClipboardCopy } from 'lucide-react';
+import { Button } from '@radix-ui/themes';
 
 interface AssistantNoteProps {
   noteContent?: string;
@@ -44,41 +45,21 @@ const HeaderActions = styled.div`
   gap: 4px;
 `;
 
-const RegenerateButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: ${({ theme }) => theme.fonts.sans};
-  color: ${({ theme }) => theme.colors.text.primary};
-  background: ${({ theme }) => theme.colors.accent.main};
-  border: none;
-  border-radius: ${({ theme }) => theme.radii.sm};
-  cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.fast};
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.accent.hover};
-  }
-`;
-
 const ExpandButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
-  background: ${({ theme }) => theme.colors.accent.main};
-  border: none;
+  background: transparent;
+  border: 1px solid var(--violet-a8);
   border-radius: ${({ theme }) => theme.radii.sm};
-  color: ${({ theme }) => theme.colors.text.primary};
+  color: var(--violet-11);
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
 
   &:hover {
-    background: ${({ theme }) => theme.colors.accent.hover};
+    background: var(--violet-a3);
   }
 `;
 
@@ -130,9 +111,9 @@ export function AssistantNote({
           Assistant's note
         </NoteTitle>
         <HeaderActions>
-          <RegenerateButton>Regenerate</RegenerateButton>
+          <Button variant="outline" color="violet" size="1">Regenerate</Button>
           <ExpandButton>
-            <ChevronDown size={14} />
+            <MessageSquare size={14} />
           </ExpandButton>
         </HeaderActions>
       </NoteHeader>
