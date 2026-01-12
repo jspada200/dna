@@ -1,4 +1,5 @@
 export type EntityType =
+  | 'Project'
   | 'Shot'
   | 'Asset'
   | 'Note'
@@ -21,6 +22,11 @@ export interface PipelineStep {
 export interface EntityBase {
   id: number;
   type: EntityType;
+}
+
+export interface Project extends EntityBase {
+  type: 'Project';
+  name?: string;
 }
 
 export interface Task extends EntityBase {
@@ -66,6 +72,7 @@ export interface Version extends EntityBase {
   updated_at?: string;
   movie_path?: string;
   frame_path?: string;
+  thumbnail?: string;
   project?: ProjectReference;
   entity?: Shot | Asset;
   task?: Task;
@@ -82,7 +89,7 @@ export interface Playlist extends EntityBase {
   versions: Version[];
 }
 
-export type DNAEntity = Shot | Asset | Note | Task | Version | Playlist;
+export type DNAEntity = Project | Shot | Asset | Note | Task | Version | Playlist;
 
 export interface EntityLink {
   type: string;
@@ -94,4 +101,16 @@ export interface CreateNoteRequest {
   content?: string;
   project: ProjectReference;
   note_links?: EntityLink[];
+}
+
+export interface GetProjectsForUserParams {
+  userEmail: string;
+}
+
+export interface GetPlaylistsForProjectParams {
+  projectId: number;
+}
+
+export interface GetVersionsForPlaylistParams {
+  playlistId: number;
 }

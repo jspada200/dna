@@ -1,9 +1,14 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import styled from 'styled-components';
+import type { Version } from '@dna/core';
 import { Sidebar } from './Sidebar';
 
 interface LayoutProps {
   children: ReactNode;
+  onReplacePlaylist?: () => void;
+  playlistId: number | null;
+  selectedVersionId?: number | null;
+  onVersionSelect?: (version: Version) => void;
 }
 
 const COLLAPSE_BREAKPOINT = 1024;
@@ -34,7 +39,13 @@ const Main = styled.main<{ $sidebarCollapsed: boolean }>`
   min-height: 100%;
 `;
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({
+  children,
+  onReplacePlaylist,
+  playlistId,
+  selectedVersionId,
+  onVersionSelect,
+}: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.innerWidth < COLLAPSE_BREAKPOINT
   );
@@ -55,6 +66,10 @@ export function Layout({ children }: LayoutProps) {
       <Sidebar
         collapsed={sidebarCollapsed}
         onCollapsedChange={setSidebarCollapsed}
+        onReplacePlaylist={onReplacePlaylist}
+        playlistId={playlistId}
+        selectedVersionId={selectedVersionId}
+        onVersionSelect={onVersionSelect}
       />
       <Main $sidebarCollapsed={sidebarCollapsed}>{children}</Main>
     </LayoutWrapper>

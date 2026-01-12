@@ -53,6 +53,15 @@ class EntityBase(BaseModel):
             return value
 
 
+class Project(EntityBase):
+    """Project entity model.
+
+    Represents a project in the production tracking system.
+    """
+
+    name: Optional[str] = Field(default=None, description="Project name")
+
+
 class Task(EntityBase):
     """Task entity model.
 
@@ -153,6 +162,9 @@ class Version(EntityBase):
     frame_path: Optional[str] = Field(
         default=None, description="Path to frame sequence"
     )
+    thumbnail: Optional[str] = Field(
+        default=None, description="URL to thumbnail image (signed URL from ShotGrid)"
+    )
     project: Optional[dict[str, Any]] = Field(
         default=None, description="Project information"
     )
@@ -201,10 +213,11 @@ class Playlist(EntityBase):
 
 
 # Type alias for any DNA entity
-DNAEntity = Union[Shot, Asset, Note, Task, Version, Playlist]
+DNAEntity = Union[Project, Shot, Asset, Note, Task, Version, Playlist]
 
 # Entity type name to model class mapping
 ENTITY_MODELS: dict[str, type[EntityBase]] = {
+    "project": Project,
     "shot": Shot,
     "asset": Asset,
     "note": Note,

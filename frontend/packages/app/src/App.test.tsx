@@ -8,9 +8,9 @@ describe('App', () => {
     expect(document.body).toBeInTheDocument();
   });
 
-  it('should render the layout', () => {
+  it('should render the project selector initially', () => {
     render(<App />);
-    expect(document.querySelector('aside')).toBeInTheDocument();
-    expect(document.querySelector('main')).toBeInTheDocument();
+    expect(screen.getByText('Welcome to DNA')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('you@example.com')).toBeInTheDocument();
   });
 });

@@ -6,6 +6,8 @@ import {
   Phone,
   Play,
   Upload,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@radix-ui/themes';
 import type { Version } from '@dna/core';
@@ -15,10 +17,15 @@ import { SplitButton } from './SplitButton';
 import { ExpandableSearch } from './ExpandableSearch';
 import { SquareButton } from './SquareButton';
 import { VersionCard } from './VersionCard';
+import { useGetVersionsForPlaylist } from '../api';
 
 interface SidebarProps {
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
+  onReplacePlaylist?: () => void;
+  playlistId: number | null;
+  selectedVersionId?: number | null;
+  onVersionSelect?: (version: Version) => void;
 }
 
 const SidebarWrapper = styled.aside<{ $collapsed: boolean }>`
@@ -169,72 +176,114 @@ const VersionCardList = styled.div`
   padding: 12px 16px;
 `;
 
-const placeholderVersions: Array<{
-  version: Version;
-  artistName: string;
-  department: string;
-  selected?: boolean;
-  inReview?: boolean;
-}> = [
-  {
-    version: { id: '1', name: 'TST0010 - 000001', path: '', createdAt: '' },
-    artistName: 'Jane Doe',
-    department: 'Lighting',
-  },
-  {
-    version: { id: '2', name: 'TST0010 - 000002', path: '', createdAt: '' },
-    artistName: 'John Smith',
-    department: 'Animation',
-    selected: true,
-  },
-  {
-    version: { id: '3', name: 'TST0010 - 000003', path: '', createdAt: '' },
-    artistName: 'Emily Chen',
-    department: 'Compositing',
-    inReview: true,
-  },
-  {
-    version: { id: '4', name: 'TST0020 - 000001', path: '', createdAt: '' },
-    artistName: 'Michael Brown',
-    department: 'FX',
-  },
-  {
-    version: { id: '5', name: 'TST0020 - 000002', path: '', createdAt: '' },
-    artistName: 'Sarah Wilson',
-    department: 'Lighting',
-  },
-  {
-    version: { id: '6', name: 'TST0030 - 000001', path: '', createdAt: '' },
-    artistName: 'David Lee',
-    department: 'Animation',
-  },
-  {
-    version: { id: '7', name: 'TST0030 - 000002', path: '', createdAt: '' },
-    artistName: 'Lisa Garcia',
-    department: 'Rigging',
-  },
-  {
-    version: { id: '8', name: 'TST0040 - 000001', path: '', createdAt: '' },
-    artistName: 'Kevin Martinez',
-    department: 'Texturing',
-  },
-  {
-    version: { id: '9', name: 'TST0040 - 000002', path: '', createdAt: '' },
-    artistName: 'Amanda Taylor',
-    department: 'Modeling',
-  },
-  {
-    version: { id: '10', name: 'TST0050 - 000001', path: '', createdAt: '' },
-    artistName: 'Chris Johnson',
-    department: 'Layout',
-  },
-];
+const StateContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  gap: 12px;
+  color: ${({ theme }) => theme.colors.text.muted};
+  text-align: center;
+`;
 
-export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
+const LoadingSpinner = styled(Loader2)`
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+`;
+
+const ErrorIcon = styled(AlertCircle)`
+  width: 24px;
+  height: 24px;
+  color: ${({ theme }) => theme.colors.status.error};
+`;
+
+const StateText = styled.span`
+  font-size: 13px;
+`;
+
+export function Sidebar({
+  collapsed,
+  onCollapsedChange,
+  onReplacePlaylist,
+  playlistId,
+  selectedVersionId,
+  onVersionSelect,
+}: SidebarProps) {
+  const {
+    data: versions,
+    isLoading,
+    isError,
+    error,
+  } = useGetVersionsForPlaylist(playlistId);
+
   const playlistMenuItems = [
-    { label: 'Replace Playlist' },
+    { label: 'Replace Playlist', onSelect: onReplacePlaylist },
     { label: 'Add Version' },
   ];
+
+  const renderVersionList = () => {
+    if (!playlistId) {
+      return (
+        <StateContainer>
+          <StateText>Select a playlist to view versions</StateText>
+        </StateContainer>
+      );
+    }
+
+    if (isLoading) {
+      return (
+        <StateContainer>
+          <LoadingSpinner />
+          <StateText>Loading versions...</StateText>
+        </StateContainer>
+      );
+    }
+
+    if (isError) {
+      return (
+        <StateContainer>
+          <ErrorIcon />
+          <StateText>{error?.message || 'Failed to load versions'}</StateText>
+        </StateContainer>
+      );
+    }
+
+    if (!versions || versions.length === 0) {
+      return (
+        <StateContainer>
+          <StateText>No versions in this playlist</StateText>
+        </StateContainer>
+      );
+    }
+
+    return (
+      <VersionCardList>
+        {versions.map((version) => (
+          <VersionCard
+            key={version.id}
+            version={version}
+            artistName={undefined}
+            department={version.task?.pipeline_step?.name}
+            thumbnailUrl={version.thumbnail}
+            selected={version.id === selectedVersionId}
+            inReview={version.status === 'rev'}
+            onClick={() => onVersionSelect?.(version)}
+          />
+        ))}
+      </VersionCardList>
+    );
+  };
 
   return (
     <SidebarWrapper $collapsed={collapsed}>
@@ -279,20 +328,7 @@ export function Sidebar({ collapsed, onCollapsedChange }: SidebarProps) {
       )}
 
       <ScrollableContent>
-        {!collapsed && (
-          <VersionCardList>
-            {placeholderVersions.map((item) => (
-              <VersionCard
-                key={item.version.id}
-                version={item.version}
-                artistName={item.artistName}
-                department={item.department}
-                selected={item.selected}
-                inReview={item.inReview}
-              />
-            ))}
-          </VersionCardList>
-        )}
+        {!collapsed && renderVersionList()}
       </ScrollableContent>
 
       {collapsed ? (

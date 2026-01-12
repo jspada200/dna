@@ -1,4 +1,12 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import {
+  GetProjectsForUserParams,
+  GetPlaylistsForProjectParams,
+  GetVersionsForPlaylistParams,
+  Playlist,
+  Project,
+  Version,
+} from './interfaces';
 
 export interface User {
   id: string;
@@ -14,7 +22,7 @@ export interface ApiHandlerConfig {
 
 class ApiHandler {
   private axiosInstance: AxiosInstance;
-  private user: User | null = null;
+  private currentUser: User | null = null;
 
   constructor(config: ApiHandlerConfig) {
     this.axiosInstance = axios.create({
@@ -26,22 +34,22 @@ class ApiHandler {
     });
 
     this.axiosInstance.interceptors.request.use((requestConfig) => {
-      if (this.user?.token) {
-        requestConfig.headers.Authorization = `Bearer ${this.user.token}`;
+      if (this.currentUser?.token) {
+        requestConfig.headers.Authorization = `Bearer ${this.currentUser.token}`;
       }
-      if (this.user?.id) {
-        requestConfig.headers['X-User-Id'] = this.user.id;
+      if (this.currentUser?.id) {
+        requestConfig.headers['X-User-Id'] = this.currentUser.id;
       }
       return requestConfig;
     });
   }
 
   setUser(user: User | null): void {
-    this.user = user;
+    this.currentUser = user;
   }
 
   getUser(): User | null {
-    return this.user;
+    return this.currentUser;
   }
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
@@ -76,6 +84,18 @@ class ApiHandler {
       config
     );
     return response.data;
+  }
+
+  async getProjectsForUser(params: GetProjectsForUserParams): Promise<Project[]> {
+    return this.get<Project[]>(`/projects/user/${encodeURIComponent(params.userEmail)}`);
+  }
+
+  async getPlaylistsForProject(params: GetPlaylistsForProjectParams): Promise<Playlist[]> {
+    return this.get<Playlist[]>(`/projects/${params.projectId}/playlists`);
+  }
+
+  async getVersionsForPlaylist(params: GetVersionsForPlaylistParams): Promise<Version[]> {
+    return this.get<Version[]>(`/playlists/${params.playlistId}/versions`);
   }
 }
 

@@ -249,4 +249,136 @@ describe('ApiHandler', () => {
       await expect(api.put('/test/1', {})).rejects.toThrow('Not found');
     });
   });
+
+  describe('getProjectsForUser', () => {
+    it('should make GET request to correct endpoint', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      const mockProjects = [
+        { id: 1, type: 'Project', name: 'Project One' },
+        { id: 2, type: 'Project', name: 'Project Two' },
+      ];
+      mockAxiosInstance.get.mockResolvedValue({ data: mockProjects });
+
+      const result = await api.getProjectsForUser({
+        userEmail: 'test@example.com',
+      });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/projects/user/test%40example.com',
+        undefined
+      );
+      expect(result).toEqual(mockProjects);
+    });
+
+    it('should encode special characters in email', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      mockAxiosInstance.get.mockResolvedValue({ data: [] });
+
+      await api.getProjectsForUser({
+        userEmail: 'user+test@example.com',
+      });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/projects/user/user%2Btest%40example.com',
+        undefined
+      );
+    });
+
+    it('should return empty array when no projects found', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      mockAxiosInstance.get.mockResolvedValue({ data: [] });
+
+      const result = await api.getProjectsForUser({
+        userEmail: 'newuser@example.com',
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('should propagate errors', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      const error = new Error('User not found');
+      mockAxiosInstance.get.mockRejectedValue(error);
+
+      await expect(
+        api.getProjectsForUser({ userEmail: 'unknown@example.com' })
+      ).rejects.toThrow('User not found');
+    });
+  });
+
+  describe('getPlaylistsForProject', () => {
+    it('should make GET request to correct endpoint', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      const mockPlaylists = [
+        { id: 1, type: 'Playlist', code: 'Dailies Review' },
+        { id: 2, type: 'Playlist', code: 'Final Review' },
+      ];
+      mockAxiosInstance.get.mockResolvedValue({ data: mockPlaylists });
+
+      const result = await api.getPlaylistsForProject({ projectId: 42 });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/projects/42/playlists',
+        undefined
+      );
+      expect(result).toEqual(mockPlaylists);
+    });
+
+    it('should return empty array when no playlists found', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      mockAxiosInstance.get.mockResolvedValue({ data: [] });
+
+      const result = await api.getPlaylistsForProject({ projectId: 999 });
+
+      expect(result).toEqual([]);
+    });
+
+    it('should propagate errors', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      const error = new Error('Project not found');
+      mockAxiosInstance.get.mockRejectedValue(error);
+
+      await expect(
+        api.getPlaylistsForProject({ projectId: 999 })
+      ).rejects.toThrow('Project not found');
+    });
+  });
+
+  describe('getVersionsForPlaylist', () => {
+    it('should make GET request to correct endpoint', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      const mockVersions = [
+        { id: 1, type: 'Version', name: 'shot_010_v001' },
+        { id: 2, type: 'Version', name: 'shot_020_v002' },
+      ];
+      mockAxiosInstance.get.mockResolvedValue({ data: mockVersions });
+
+      const result = await api.getVersionsForPlaylist({ playlistId: 42 });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/playlists/42/versions',
+        undefined
+      );
+      expect(result).toEqual(mockVersions);
+    });
+
+    it('should return empty array when no versions found', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      mockAxiosInstance.get.mockResolvedValue({ data: [] });
+
+      const result = await api.getVersionsForPlaylist({ playlistId: 999 });
+
+      expect(result).toEqual([]);
+    });
+
+    it('should propagate errors', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      const error = new Error('Playlist not found');
+      mockAxiosInstance.get.mockRejectedValue(error);
+
+      await expect(
+        api.getVersionsForPlaylist({ playlistId: 999 })
+      ).rejects.toThrow('Playlist not found');
+    });
+  });
 });
