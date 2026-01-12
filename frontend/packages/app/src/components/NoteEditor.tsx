@@ -20,12 +20,26 @@ const EditorWrapper = styled.div`
   background: ${({ theme }) => theme.colors.bg.surface};
   border: 1px solid ${({ theme }) => theme.colors.border.subtle};
   border-radius: ${({ theme }) => theme.radii.lg};
+  flex: 1;
+  min-height: 0;
+`;
+
+const EditorContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 `;
 
 const EditorHeader = styled.div`
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const TitleRow = styled.div`
+  display: flex;
   align-items: center;
-  gap: 16px;
 `;
 
 const EditorTitle = styled.h2`
@@ -49,7 +63,9 @@ export function NoteEditor({
   return (
     <EditorWrapper>
       <EditorHeader>
-        <EditorTitle>New Note</EditorTitle>
+        <TitleRow>
+          <EditorTitle>New Note</EditorTitle>
+        </TitleRow>
         <NoteOptionsInline
           toValue={toValue}
           ccValue={ccValue}
@@ -59,12 +75,14 @@ export function NoteEditor({
         />
       </EditorHeader>
 
-      <MarkdownEditor
-        value={notesValue}
-        onChange={onNotesChange}
-        placeholder="Write your notes here... (supports **markdown**)"
-        minHeight={120}
-      />
+      <EditorContent>
+        <MarkdownEditor
+          value={notesValue}
+          onChange={onNotesChange}
+          placeholder="Write your notes here... (supports **markdown**)"
+          minHeight={120}
+        />
+      </EditorContent>
     </EditorWrapper>
   );
 }

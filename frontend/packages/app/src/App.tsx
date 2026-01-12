@@ -40,7 +40,7 @@ function App() {
       selectedVersionId={selectedVersion?.id}
       onVersionSelect={handleVersionSelect}
     >
-      <ContentArea />
+      <ContentArea version={selectedVersion} />
     </Layout>
   );
 }

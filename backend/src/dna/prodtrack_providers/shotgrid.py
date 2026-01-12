@@ -153,16 +153,45 @@ class ShotgridProvider(ProdtrackProviderBase):
         for sg_name, dna_name in entity_mapping["fields"].items():
             entity_data[dna_name] = sg_entity.get(sg_name)
 
-        # Populate linked fields by recursively fetching linked entities
-        if resolve_links:
-            for sg_field_name, dna_field_name in linked_fields_map.items():
-                linked_data = sg_entity.get(sg_field_name)
+        # Populate linked fields
+        for sg_field_name, dna_field_name in linked_fields_map.items():
+            linked_data = sg_entity.get(sg_field_name)
+            if resolve_links:
                 entity_data[dna_field_name] = self._resolve_linked_field(linked_data)
+            else:
+                entity_data[dna_field_name] = self._convert_shallow_link(linked_data)
 
         # Instantiate the Pydantic model
         model_class = ENTITY_MODELS[entity_type]
 
         return model_class(**entity_data)
+
+    def _convert_shallow_link(self, data):
+        """Convert linked entity data to shallow DNA entity without recursive fetch.
+
+        This includes basic info (id, name) from the SG response without
+        making additional API calls to fetch the full entity.
+        """
+        if data is None:
+            return None
+        if isinstance(data, dict):
+            return self._create_shallow_entity(data)
+        elif isinstance(data, list):
+            return [self._create_shallow_entity(item) for item in data if item]
+        return None
+
+    def _create_shallow_entity(self, sg_link: dict) -> EntityBase:
+        """Create a shallow DNA entity from a ShotGrid link dict."""
+        sg_type = sg_link.get("type")
+        entity_id = sg_link.get("id")
+        name = sg_link.get("name")
+
+        dna_type = _get_dna_entity_type(sg_type)
+        model_class = ENTITY_MODELS[dna_type]
+
+        if dna_type == "playlist":
+            return model_class(id=entity_id, code=name)
+        return model_class(id=entity_id, name=name)
 
     def get_entity(self, entity_type: str, entity_id: int) -> EntityBase:
         """
@@ -421,13 +450,46 @@ class ShotgridProvider(ProdtrackProviderBase):
             fields=version_fields,
         )
 
-        entity_mapping = FIELD_MAPPING["version"]
-        return [
-            self._convert_sg_entity_to_dna_entity(
+        # Collect unique task IDs from versions
+        task_ids = list(
+            {
+                v["sg_task"]["id"]
+                for v in sg_versions
+                if v.get("sg_task") and v["sg_task"].get("id")
+            }
+        )
+
+        # Batch-fetch tasks with their step (pipeline_step) field
+        tasks_by_id: dict[int, dict] = {}
+        if task_ids:
+            task_mapping = FIELD_MAPPING["task"]
+            task_fields = list(task_mapping["fields"].keys())
+            sg_tasks = self.sg.find(
+                "Task",
+                filters=[["id", "in", task_ids]],
+                fields=task_fields,
+            )
+            for sg_task in sg_tasks:
+                tasks_by_id[sg_task["id"]] = sg_task
+
+        # Convert versions and enrich with full task data
+        versions = []
+        for sg_version in sg_versions:
+            version = self._convert_sg_entity_to_dna_entity(
                 sg_version, entity_mapping, "version", resolve_links=False
             )
-            for sg_version in sg_versions
-        ]
+            # Replace shallow task with enriched task data
+            if sg_version.get("sg_task") and sg_version["sg_task"].get("id"):
+                task_id = sg_version["sg_task"]["id"]
+                if task_id in tasks_by_id:
+                    sg_task = tasks_by_id[task_id]
+                    task_mapping = FIELD_MAPPING["task"]
+                    version.task = self._convert_sg_entity_to_dna_entity(
+                        sg_task, task_mapping, "task", resolve_links=False
+                    )
+            versions.append(version)
+
+        return versions
 
 
 def _get_dna_entity_type(sg_entity_type: str) -> str:

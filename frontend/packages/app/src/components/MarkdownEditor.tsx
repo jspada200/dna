@@ -9,13 +9,23 @@ interface MarkdownEditorProps {
   minHeight?: number;
 }
 
-const EditorWrapper = styled.div`
+const EditorWrapper = styled.div<{ $minHeight: number }>`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: ${({ $minHeight }) => $minHeight}px;
+
   .w-md-editor {
     background: ${({ theme }) => theme.colors.bg.base};
     border: 1px solid ${({ theme }) => theme.colors.border.default};
     border-radius: ${({ theme }) => theme.radii.md};
     box-shadow: none;
     font-family: ${({ theme }) => theme.fonts.sans};
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: auto !important;
+    min-height: ${({ $minHeight }) => $minHeight}px;
 
     &:focus-within {
       border-color: ${({ theme }) => theme.colors.accent.main};
@@ -67,6 +77,9 @@ const EditorWrapper = styled.div`
 
   .w-md-editor-content {
     background: ${({ theme }) => theme.colors.bg.base};
+    flex: 1;
+    display: flex;
+    flex-direction: column;
   }
 
   .w-md-editor-text-input,
@@ -173,6 +186,7 @@ const EditorWrapper = styled.div`
 
   .w-md-editor-area {
     padding: 12px;
+    flex: 1;
   }
 
   .w-md-editor-input {
@@ -223,7 +237,7 @@ export function MarkdownEditor({
   ];
 
   return (
-    <EditorWrapper data-color-mode="dark">
+    <EditorWrapper data-color-mode="dark" $minHeight={minHeight}>
       <MDEditor
         value={value}
         onChange={handleChange}

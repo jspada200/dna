@@ -9,6 +9,7 @@ interface VersionHeaderProps {
   submittedByImageUrl?: string;
   dateSubmitted?: string;
   versionStatus?: string;
+  thumbnailUrl?: string;
   links?: string[];
 }
 
@@ -204,14 +205,20 @@ const LinksContainer = styled.div`
 `;
 
 export function VersionHeader({
-  shotCode = 'TST0010',
-  versionNumber = '000001',
-  submittedBy = 'Jane Doe',
+  shotCode,
+  versionNumber,
+  submittedBy,
   submittedByImageUrl,
-  dateSubmitted = 'Dec 19, 2025',
-  versionStatus = 'Submitted for review',
-  links = ['Lighting', 'TST0010'],
+  dateSubmitted,
+  versionStatus,
+  thumbnailUrl,
+  links = [],
 }: VersionHeaderProps) {
+  const displayTitle = shotCode && versionNumber 
+    ? `${shotCode} - ` 
+    : '';
+  const displayCode = versionNumber || shotCode || 'Untitled Version';
+
   return (
     <HeaderWrapper>
       <TopBar>
@@ -234,10 +241,12 @@ export function VersionHeader({
         </TopBarActions>
       </TopBar>
       <MainContent>
-        <Thumbnail />
+        <Thumbnail>
+          {thumbnailUrl && <img src={thumbnailUrl} alt={displayCode} />}
+        </Thumbnail>
         <MetadataSection>
           <VersionTitle>
-            {shotCode} - <VersionTitleCode>{versionNumber}</VersionTitleCode>
+            {displayTitle}<VersionTitleCode>{displayCode}</VersionTitleCode>
           </VersionTitle>
           <MetadataRow>
             <MetadataLabel>Submitted by:</MetadataLabel>

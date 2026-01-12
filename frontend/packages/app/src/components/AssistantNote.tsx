@@ -1,6 +1,6 @@
 import styled from 'styled-components';
 import { Bot, MessageSquare, Copy, ClipboardCopy } from 'lucide-react';
-import { Button } from '@radix-ui/themes';
+import { SplitButton } from './SplitButton';
 
 interface AssistantNoteProps {
   noteContent?: string;
@@ -43,24 +43,6 @@ const HeaderActions = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
-`;
-
-const ExpandButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: transparent;
-  border: 1px solid var(--violet-a8);
-  border-radius: ${({ theme }) => theme.radii.sm};
-  color: var(--violet-11);
-  cursor: pointer;
-  transition: all ${({ theme }) => theme.transitions.fast};
-
-  &:hover {
-    background: var(--violet-a3);
-  }
 `;
 
 const NoteContent = styled.div`
@@ -111,10 +93,9 @@ export function AssistantNote({
           Assistant's note
         </NoteTitle>
         <HeaderActions>
-          <Button variant="outline" color="violet" size="1">Regenerate</Button>
-          <ExpandButton>
-            <MessageSquare size={14} />
-          </ExpandButton>
+          <SplitButton rightSlot={<MessageSquare size={14} />}>
+            Regenerate
+          </SplitButton>
         </HeaderActions>
       </NoteHeader>
       <NoteContent>{noteContent}</NoteContent>

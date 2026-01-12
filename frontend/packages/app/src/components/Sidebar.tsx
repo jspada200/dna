@@ -277,7 +277,7 @@ export function Sidebar({
             department={version.task?.pipeline_step?.name}
             thumbnailUrl={version.thumbnail}
             selected={version.id === selectedVersionId}
-            inReview={version.status === 'rev'}
+            inReview={false}
             onClick={() => onVersionSelect?.(version)}
           />
         ))}
