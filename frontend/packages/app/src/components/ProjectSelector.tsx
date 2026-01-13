@@ -10,7 +10,7 @@ import {
   StyledSelectContent,
 } from './FormInputs';
 
-const STORAGE_KEYS = {
+export const STORAGE_KEYS = {
   USER_EMAIL: 'dna_user_email',
   PROJECT: 'dna_selected_project',
 };
@@ -205,6 +205,11 @@ function clearStoredProject(): void {
   } catch {
     // Ignore storage errors
   }
+}
+
+export function clearUserSession(): void {
+  clearStoredEmail();
+  clearStoredProject();
 }
 
 export function ProjectSelector({ onSelectionComplete }: ProjectSelectorProps) {

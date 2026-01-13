@@ -27,6 +27,7 @@ interface SidebarProps {
   selectedVersionId?: number | null;
   onVersionSelect?: (version: Version) => void;
   userEmail: string;
+  onLogout?: () => void;
 }
 
 const SidebarWrapper = styled.aside<{ $collapsed: boolean }>`
@@ -236,6 +237,7 @@ export function Sidebar({
   selectedVersionId,
   onVersionSelect,
   userEmail,
+  onLogout,
 }: SidebarProps) {
   const {
     data: versions,
@@ -325,7 +327,7 @@ export function Sidebar({
               <Button size="2" variant="solid" color="violet">
                 Publish Notes
               </Button>
-              <UserAvatar name={user?.name ?? userEmail} size="2" />
+              <UserAvatar name={user?.name ?? userEmail} size="2" onLogout={onLogout} />
             </>
           )}
           <CollapseButton

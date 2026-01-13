@@ -1,6 +1,6 @@
 export { Sidebar } from './Sidebar';
 export { Layout } from './Layout';
-export { ProjectSelector } from './ProjectSelector';
+export { ProjectSelector, clearUserSession } from './ProjectSelector';
 export { Logo } from './Logo';
 export { UserAvatar } from './UserAvatar';
 export { SplitButton } from './SplitButton';

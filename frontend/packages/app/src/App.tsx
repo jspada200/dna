@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Playlist, Project, Version } from '@dna/core';
-import { Layout, ContentArea, ProjectSelector } from './components';
+import { Layout, ContentArea, ProjectSelector, clearUserSession } from './components';
 import { useGetVersionsForPlaylist } from './api';
 
 function App() {
@@ -40,6 +40,14 @@ function App() {
     setSelectedVersion(null);
   };
 
+  const handleLogout = () => {
+    clearUserSession();
+    setSelectedProject(null);
+    setSelectedPlaylist(null);
+    setUserEmail(null);
+    setSelectedVersion(null);
+  };
+
   const handleVersionSelect = (version: Version) => {
     setSelectedVersion(version);
   };
@@ -55,6 +63,7 @@ function App() {
       selectedVersionId={selectedVersion?.id}
       onVersionSelect={handleVersionSelect}
       userEmail={userEmail}
+      onLogout={handleLogout}
     >
       <ContentArea
         version={selectedVersion}
