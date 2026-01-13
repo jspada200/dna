@@ -131,7 +131,7 @@ export function ContentArea({ version, versions = [], onVersionSelect, onRefresh
         hasInReview={hasInReview}
         onRefresh={onRefresh}
       />
-      <NoteEditor />
+      <NoteEditor versionId={version.id} />
       <AssistantPanel />
     </ContentWrapper>
   );

@@ -1,15 +1,10 @@
 import styled from 'styled-components';
 import { NoteOptionsInline } from './NoteOptionsInline';
 import { MarkdownEditor } from './MarkdownEditor';
+import { useDraftNote } from '../hooks';
 
 interface NoteEditorProps {
-  toValue?: string;
-  ccValue?: string;
-  subjectValue?: string;
-  linksValue?: string;
-  versionStatus?: string;
-  notesValue?: string;
-  onNotesChange?: (value: string) => void;
+  versionId?: number | null;
 }
 
 const EditorWrapper = styled.div`
@@ -51,15 +46,33 @@ const EditorTitle = styled.h2`
   flex-shrink: 0;
 `;
 
-export function NoteEditor({
-  toValue = '',
-  ccValue = '',
-  subjectValue = '',
-  linksValue = '',
-  versionStatus = '',
-  notesValue = '',
-  onNotesChange,
-}: NoteEditorProps) {
+export function NoteEditor({ versionId }: NoteEditorProps) {
+  const { draftNote, updateDraftNote } = useDraftNote(versionId);
+
+  const handleContentChange = (value: string) => {
+    updateDraftNote({ content: value });
+  };
+
+  const handleToChange = (value: string) => {
+    updateDraftNote({ to: value });
+  };
+
+  const handleCcChange = (value: string) => {
+    updateDraftNote({ cc: value });
+  };
+
+  const handleSubjectChange = (value: string) => {
+    updateDraftNote({ subject: value });
+  };
+
+  const handleLinksChange = (value: string) => {
+    updateDraftNote({ links: value });
+  };
+
+  const handleVersionStatusChange = (value: string) => {
+    updateDraftNote({ versionStatus: value });
+  };
+
   return (
     <EditorWrapper>
       <EditorHeader>
@@ -67,18 +80,23 @@ export function NoteEditor({
           <EditorTitle>New Note</EditorTitle>
         </TitleRow>
         <NoteOptionsInline
-          toValue={toValue}
-          ccValue={ccValue}
-          subjectValue={subjectValue}
-          linksValue={linksValue}
-          versionStatus={versionStatus}
+          toValue={draftNote?.to ?? ''}
+          ccValue={draftNote?.cc ?? ''}
+          subjectValue={draftNote?.subject ?? ''}
+          linksValue={draftNote?.links ?? ''}
+          versionStatus={draftNote?.versionStatus ?? ''}
+          onToChange={handleToChange}
+          onCcChange={handleCcChange}
+          onSubjectChange={handleSubjectChange}
+          onLinksChange={handleLinksChange}
+          onVersionStatusChange={handleVersionStatusChange}
         />
       </EditorHeader>
 
       <EditorContent>
         <MarkdownEditor
-          value={notesValue}
-          onChange={onNotesChange}
+          value={draftNote?.content ?? ''}
+          onChange={handleContentChange}
           placeholder="Write your notes here... (supports **markdown**)"
           minHeight={120}
         />
