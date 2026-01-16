@@ -1,7 +1,8 @@
+import { useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import type { Version } from '@dna/core';
 import { VersionHeader } from './VersionHeader';
-import { NoteEditor } from './NoteEditor';
+import { NoteEditor, type NoteEditorHandle } from './NoteEditor';
 import { AssistantPanel } from './AssistantPanel';
 
 interface ContentAreaProps {
@@ -68,6 +69,7 @@ function getStatusLabel(status?: string): string {
 const IN_REVIEW_STATUS = 'rev';
 
 export function ContentArea({ version, versions = [], playlistId, userEmail, onVersionSelect, onRefresh }: ContentAreaProps) {
+  const noteEditorRef = useRef<NoteEditorHandle>(null);
   const currentIndex = version ? versions.findIndex(v => v.id === version.id) : -1;
   const canGoBack = currentIndex > 0;
   const canGoNext = currentIndex >= 0 && currentIndex < versions.length - 1;
@@ -91,6 +93,10 @@ export function ContentArea({ version, versions = [], playlistId, userEmail, onV
       onVersionSelect(inReviewVersion);
     }
   };
+
+  const handleInsertNote = useCallback((content: string) => {
+    noteEditorRef.current?.appendContent(content);
+  }, []);
 
   if (!version) {
     return (
@@ -133,8 +139,13 @@ export function ContentArea({ version, versions = [], playlistId, userEmail, onV
         hasInReview={hasInReview}
         onRefresh={onRefresh}
       />
-      <NoteEditor playlistId={playlistId} versionId={version.id} userEmail={userEmail} />
-      <AssistantPanel />
+      <NoteEditor ref={noteEditorRef} playlistId={playlistId} versionId={version.id} userEmail={userEmail} />
+      <AssistantPanel
+        playlistId={playlistId}
+        versionId={version.id}
+        userEmail={userEmail}
+        onInsertNote={handleInsertNote}
+      />
     </ContentWrapper>
   );
 }

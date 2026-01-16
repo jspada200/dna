@@ -4,3 +4,9 @@ export type {
   UseDraftNoteParams,
   UseDraftNoteResult,
 } from './useDraftNote';
+
+export { useOtherDraftNotes } from './useOtherDraftNotes';
+export type {
+  UseOtherDraftNotesParams,
+  UseOtherDraftNotesResult,
+} from './useOtherDraftNotes';

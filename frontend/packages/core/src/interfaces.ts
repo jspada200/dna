@@ -188,3 +188,8 @@ export interface DeleteDraftNoteParams {
   versionId: number;
   userEmail: string;
 }
+
+export interface GetAllDraftNotesParams {
+  playlistId: number;
+  versionId: number;
+}

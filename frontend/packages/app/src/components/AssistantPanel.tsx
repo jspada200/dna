@@ -1,9 +1,14 @@
 import styled from 'styled-components';
 import * as Tabs from '@radix-ui/react-tabs';
 import { AssistantNote } from './AssistantNote';
+import { OtherNotesPanel } from './OtherNotesPanel';
 
 interface AssistantPanelProps {
   activeTab?: string;
+  playlistId?: number | null;
+  versionId?: number | null;
+  userEmail?: string | null;
+  onInsertNote?: (content: string) => void;
 }
 
 const PanelWrapper = styled.div`
@@ -58,6 +63,10 @@ const EmptyContent = styled.div`
 
 export function AssistantPanel({
   activeTab = 'assistant',
+  playlistId,
+  versionId,
+  userEmail,
+  onInsertNote,
 }: AssistantPanelProps) {
   return (
     <PanelWrapper>
@@ -65,11 +74,11 @@ export function AssistantPanel({
         <StyledTabsList>
           <StyledTabsTrigger value="assistant">AI Assistent</StyledTabsTrigger>
           <StyledTabsTrigger value="transcript">Transcript</StyledTabsTrigger>
-          <StyledTabsTrigger value="other">Other Notes</StyledTabsTrigger>
+          <StyledTabsTrigger value="other">Other Pending Notes</StyledTabsTrigger>
         </StyledTabsList>
 
         <StyledTabsContent value="assistant">
-          <AssistantNote />
+          <AssistantNote onInsertNote={onInsertNote} />
         </StyledTabsContent>
 
         <StyledTabsContent value="transcript">
@@ -77,7 +86,12 @@ export function AssistantPanel({
         </StyledTabsContent>
 
         <StyledTabsContent value="other">
-          <EmptyContent>Other notes will appear here</EmptyContent>
+          <OtherNotesPanel
+            playlistId={playlistId}
+            versionId={versionId}
+            userEmail={userEmail}
+            onInsertNote={onInsertNote}
+          />
         </StyledTabsContent>
       </StyledTabsRoot>
     </PanelWrapper>

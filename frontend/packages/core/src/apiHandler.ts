@@ -5,6 +5,7 @@ import {
   GetVersionsForPlaylistParams,
   GetUserByEmailParams,
   GetDraftNoteParams,
+  GetAllDraftNotesParams,
   UpsertDraftNoteParams,
   DeleteDraftNoteParams,
   DraftNote,
@@ -132,6 +133,12 @@ class ApiHandler {
   async deleteDraftNote(params: DeleteDraftNoteParams): Promise<boolean> {
     return this.delete<boolean>(
       `/playlists/${params.playlistId}/versions/${params.versionId}/draft-notes/${encodeURIComponent(params.userEmail)}`
+    );
+  }
+
+  async getAllDraftNotes(params: GetAllDraftNotesParams): Promise<DraftNote[]> {
+    return this.get<DraftNote[]>(
+      `/playlists/${params.playlistId}/versions/${params.versionId}/draft-notes`
     );
   }
 }

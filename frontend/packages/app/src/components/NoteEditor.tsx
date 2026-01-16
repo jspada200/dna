@@ -1,3 +1,4 @@
+import { forwardRef, useImperativeHandle } from 'react';
 import styled from 'styled-components';
 import { NoteOptionsInline } from './NoteOptionsInline';
 import { MarkdownEditor } from './MarkdownEditor';
@@ -7,6 +8,10 @@ interface NoteEditorProps {
   playlistId?: number | null;
   versionId?: number | null;
   userEmail?: string | null;
+}
+
+export interface NoteEditorHandle {
+  appendContent: (content: string) => void;
 }
 
 const EditorWrapper = styled.div`
@@ -48,38 +53,47 @@ const EditorTitle = styled.h2`
   flex-shrink: 0;
 `;
 
-export function NoteEditor({ playlistId, versionId, userEmail }: NoteEditorProps) {
-  const { draftNote, updateDraftNote } = useDraftNote({
-    playlistId,
-    versionId,
-    userEmail,
-  });
+export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
+  function NoteEditor({ playlistId, versionId, userEmail }, ref) {
+    const { draftNote, updateDraftNote } = useDraftNote({
+      playlistId,
+      versionId,
+      userEmail,
+    });
 
-  const handleContentChange = (value: string) => {
-    updateDraftNote({ content: value });
-  };
+    useImperativeHandle(ref, () => ({
+      appendContent: (content: string) => {
+        const currentContent = draftNote?.content ?? '';
+        const separator = currentContent.trim() ? '\n\n---\n\n' : '';
+        updateDraftNote({ content: currentContent + separator + content });
+      },
+    }), [draftNote?.content, updateDraftNote]);
 
-  const handleToChange = (value: string) => {
-    updateDraftNote({ to: value });
-  };
+    const handleContentChange = (value: string) => {
+      updateDraftNote({ content: value });
+    };
 
-  const handleCcChange = (value: string) => {
-    updateDraftNote({ cc: value });
-  };
+    const handleToChange = (value: string) => {
+      updateDraftNote({ to: value });
+    };
 
-  const handleSubjectChange = (value: string) => {
-    updateDraftNote({ subject: value });
-  };
+    const handleCcChange = (value: string) => {
+      updateDraftNote({ cc: value });
+    };
 
-  const handleLinksChange = (value: string) => {
-    updateDraftNote({ linksText: value });
-  };
+    const handleSubjectChange = (value: string) => {
+      updateDraftNote({ subject: value });
+    };
 
-  const handleVersionStatusChange = (value: string) => {
-    updateDraftNote({ versionStatus: value });
-  };
+    const handleLinksChange = (value: string) => {
+      updateDraftNote({ linksText: value });
+    };
 
-  return (
+    const handleVersionStatusChange = (value: string) => {
+      updateDraftNote({ versionStatus: value });
+    };
+
+    return (
     <EditorWrapper>
       <EditorHeader>
         <TitleRow>
@@ -108,5 +122,6 @@ export function NoteEditor({ playlistId, versionId, userEmail }: NoteEditorProps
         />
       </EditorContent>
     </EditorWrapper>
-  );
-}
+    );
+  }
+);

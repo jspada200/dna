@@ -599,4 +599,77 @@ describe('ApiHandler', () => {
       ).rejects.toThrow('Not found');
     });
   });
+
+  describe('getAllDraftNotes', () => {
+    it('should make GET request to correct endpoint', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      const mockDraftNotes = [
+        {
+          _id: 'abc123',
+          user_email: 'user1@example.com',
+          playlist_id: 1,
+          version_id: 2,
+          content: 'Note 1',
+          subject: '',
+          to: '',
+          cc: '',
+          links: [],
+          version_status: '',
+          updated_at: '2025-01-15T00:00:00Z',
+          created_at: '2025-01-15T00:00:00Z',
+        },
+        {
+          _id: 'def456',
+          user_email: 'user2@example.com',
+          playlist_id: 1,
+          version_id: 2,
+          content: 'Note 2',
+          subject: '',
+          to: '',
+          cc: '',
+          links: [],
+          version_status: '',
+          updated_at: '2025-01-15T00:00:00Z',
+          created_at: '2025-01-15T00:00:00Z',
+        },
+      ];
+      mockAxiosInstance.get.mockResolvedValue({ data: mockDraftNotes });
+
+      const result = await api.getAllDraftNotes({
+        playlistId: 1,
+        versionId: 2,
+      });
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        '/playlists/1/versions/2/draft-notes',
+        undefined
+      );
+      expect(result).toEqual(mockDraftNotes);
+    });
+
+    it('should return empty array when no draft notes exist', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      mockAxiosInstance.get.mockResolvedValue({ data: [] });
+
+      const result = await api.getAllDraftNotes({
+        playlistId: 1,
+        versionId: 2,
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('should propagate errors', async () => {
+      const api = createApiHandler({ baseURL: 'http://localhost:8000' });
+      const error = new Error('Server error');
+      mockAxiosInstance.get.mockRejectedValue(error);
+
+      await expect(
+        api.getAllDraftNotes({
+          playlistId: 1,
+          versionId: 2,
+        })
+      ).rejects.toThrow('Server error');
+    });
+  });
 });
