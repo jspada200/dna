@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react';
 import styled from 'styled-components';
 import {
   PanelLeftClose,
@@ -239,6 +240,10 @@ export function Sidebar({
   userEmail,
   onLogout,
 }: SidebarProps) {
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const versionRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
   const {
     data: versions,
     isLoading,
@@ -254,6 +259,20 @@ export function Sidebar({
     { label: 'Replace Playlist', onSelect: onReplacePlaylist },
     { label: 'Add Version' },
   ];
+
+  const handleSearchVersionSelect = (version: Version) => {
+    onVersionSelect?.(version);
+    
+    setTimeout(() => {
+      const versionElement = versionRefs.current.get(version.id);
+      if (versionElement && scrollContainerRef.current) {
+        versionElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    }, 50);
+  };
 
   const renderVersionList = () => {
     if (!playlistId) {
@@ -301,16 +320,26 @@ export function Sidebar({
         )}
         <VersionCardList>
           {versions.map((version) => (
-            <VersionCard
+            <div
               key={version.id}
-              version={version}
-              artistName={version.user?.name}
-              department={version.task?.pipeline_step?.name}
-              thumbnailUrl={version.thumbnail}
-              selected={version.id === selectedVersionId}
-              inReview={false}
-              onClick={() => onVersionSelect?.(version)}
-            />
+              ref={(el) => {
+                if (el) {
+                  versionRefs.current.set(version.id, el);
+                } else {
+                  versionRefs.current.delete(version.id);
+                }
+              }}
+            >
+              <VersionCard
+                version={version}
+                artistName={version.user?.name}
+                department={version.task?.pipeline_step?.name}
+                thumbnailUrl={version.thumbnail}
+                selected={version.id === selectedVersionId}
+                inReview={false}
+                onClick={() => onVersionSelect?.(version)}
+              />
+            </div>
           ))}
         </VersionCardList>
       </VersionListContainer>
@@ -349,17 +378,25 @@ export function Sidebar({
         </CollapsedToolbar>
       ) : (
         <Toolbar>
-          <ToolbarLeft>
-            <SplitButton menuItems={playlistMenuItems} onClick={() => refetch()}>
-              Reload Playlist
-            </SplitButton>
-          </ToolbarLeft>
+          {!isSearchExpanded && (
+            <ToolbarLeft>
+              <SplitButton menuItems={playlistMenuItems} onClick={() => refetch()}>
+                Reload Playlist
+              </SplitButton>
+            </ToolbarLeft>
+          )}
 
-          <ExpandableSearch placeholder="Search versions..." />
+          <ExpandableSearch
+            placeholder="Search versions..."
+            versions={versions}
+            selectedVersionId={selectedVersionId}
+            onVersionSelect={handleSearchVersionSelect}
+            onExpandedChange={setIsSearchExpanded}
+          />
         </Toolbar>
       )}
 
-      <ScrollableContent>
+      <ScrollableContent ref={scrollContainerRef}>
         {!collapsed && renderVersionList()}
       </ScrollableContent>
 
