@@ -1,0 +1,95 @@
+"""MongoDB Storage Provider.
+
+MongoDB implementation of the storage provider interface using PyMongo's native async API.
+"""
+
+import os
+from datetime import datetime, timezone
+from typing import Any, Optional
+
+from pymongo import AsyncMongoClient, ReturnDocument
+
+from dna.models.draft_note import DraftNote, DraftNoteUpdate
+from dna.storage_providers.storage_provider_base import StorageProviderBase
+
+
+class MongoDBStorageProvider(StorageProviderBase):
+    """MongoDB implementation of the storage provider."""
+
+    def __init__(self) -> None:
+        self._client: Optional[AsyncMongoClient[Any]] = None
+
+    @property
+    def client(self) -> AsyncMongoClient[Any]:
+        if self._client is None:
+            mongo_url = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
+            self._client = AsyncMongoClient(mongo_url)
+        return self._client
+
+    @property
+    def db(self) -> Any:
+        return self.client.dna
+
+    @property
+    def draft_notes(self) -> Any:
+        return self.db.draft_notes
+
+    def _build_query(
+        self, user_email: str, playlist_id: int, version_id: int
+    ) -> dict[str, Any]:
+        """Build the composite key query."""
+        return {
+            "user_email": user_email,
+            "playlist_id": playlist_id,
+            "version_id": version_id,
+        }
+
+    async def get_draft_notes_for_version(
+        self, playlist_id: int, version_id: int
+    ) -> list[DraftNote]:
+        """Get all draft notes for a playlist/version (all users)."""
+        query = {"playlist_id": playlist_id, "version_id": version_id}
+        cursor = self.draft_notes.find(query)
+        results = []
+        async for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            results.append(DraftNote(**doc))
+        return results
+
+    async def get_draft_note(
+        self, user_email: str, playlist_id: int, version_id: int
+    ) -> Optional[DraftNote]:
+        query = self._build_query(user_email, playlist_id, version_id)
+        doc = await self.draft_notes.find_one(query)
+        if doc:
+            doc["_id"] = str(doc["_id"])
+            return DraftNote(**doc)
+        return None
+
+    async def upsert_draft_note(
+        self, user_email: str, playlist_id: int, version_id: int, data: DraftNoteUpdate
+    ) -> DraftNote:
+        now = datetime.now(timezone.utc)
+        query = self._build_query(user_email, playlist_id, version_id)
+
+        update: dict[str, Any] = {
+            "$set": {**data.model_dump(), "updated_at": now},
+            "$setOnInsert": {
+                "created_at": now,
+                "user_email": user_email,
+                "playlist_id": playlist_id,
+                "version_id": version_id,
+            },
+        }
+        result = await self.draft_notes.find_one_and_update(
+            query, update, upsert=True, return_document=ReturnDocument.AFTER
+        )
+        result["_id"] = str(result["_id"])
+        return DraftNote(**result)
+
+    async def delete_draft_note(
+        self, user_email: str, playlist_id: int, version_id: int
+    ) -> bool:
+        query = self._build_query(user_email, playlist_id, version_id)
+        result = await self.draft_notes.delete_one(query)
+        return result.deleted_count > 0

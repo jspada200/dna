@@ -1,7 +1,7 @@
 """FastAPI application entry point."""
 
 from functools import lru_cache
-from typing import Annotated, cast
+from typing import Annotated, Optional, cast
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from dna.models import (
     Asset,
     CreateNoteRequest,
+    DraftNote,
+    DraftNoteUpdate,
     FindRequest,
     Note,
     Playlist,
@@ -22,6 +24,10 @@ from dna.models.entity import ENTITY_MODELS, EntityBase
 from dna.prodtrack_providers.prodtrack_provider_base import (
     ProdtrackProviderBase,
     get_prodtrack_provider,
+)
+from dna.storage_providers.storage_provider_base import (
+    StorageProviderBase,
+    get_storage_provider,
 )
 
 # API metadata for Swagger documentation
@@ -95,6 +101,10 @@ tags_metadata = [
         "name": "LLM",
         "description": "LLM-powered note generation",
     },
+    {
+        "name": "Draft Notes",
+        "description": "Operations for managing draft notes",
+    },
 ]
 
 app = FastAPI(
@@ -132,8 +142,18 @@ def get_prodtrack_provider_cached() -> ProdtrackProviderBase:
     return get_prodtrack_provider()
 
 
+@lru_cache
+def get_storage_provider_cached() -> StorageProviderBase:
+    """Get or create the storage provider singleton."""
+    return get_storage_provider()
+
+
 ProdtrackProviderDep = Annotated[
     ProdtrackProviderBase, Depends(get_prodtrack_provider_cached)
+]
+
+StorageProviderDep = Annotated[
+    StorageProviderBase, Depends(get_storage_provider_cached)
 ]
 
 
@@ -421,3 +441,79 @@ async def get_versions_for_playlist(
         return provider.get_versions_for_playlist(playlist_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# -----------------------------------------------------------------------------
+# Draft Notes endpoints
+# -----------------------------------------------------------------------------
+
+
+@app.get(
+    "/playlists/{playlist_id}/versions/{version_id}/draft-notes",
+    tags=["Draft Notes"],
+    summary="Get all draft notes for a version",
+    description="Retrieve all users' draft notes for the specified playlist/version.",
+    response_model=list[DraftNote],
+)
+async def get_all_draft_notes(
+    playlist_id: int,
+    version_id: int,
+    provider: StorageProviderDep,
+) -> list[DraftNote]:
+    """Get all users' draft notes for this playlist/version."""
+    return await provider.get_draft_notes_for_version(playlist_id, version_id)
+
+
+@app.get(
+    "/playlists/{playlist_id}/versions/{version_id}/draft-notes/{user_email}",
+    tags=["Draft Notes"],
+    summary="Get draft note for a user",
+    description="Retrieve a specific user's draft note for the playlist/version.",
+    response_model=Optional[DraftNote],
+)
+async def get_draft_note(
+    playlist_id: int,
+    version_id: int,
+    user_email: str,
+    provider: StorageProviderDep,
+) -> Optional[DraftNote]:
+    """Get a specific user's draft note."""
+    return await provider.get_draft_note(user_email, playlist_id, version_id)
+
+
+@app.put(
+    "/playlists/{playlist_id}/versions/{version_id}/draft-notes/{user_email}",
+    tags=["Draft Notes"],
+    summary="Create or update a draft note",
+    description="Create or update a user's draft note for the playlist/version.",
+    response_model=DraftNote,
+)
+async def upsert_draft_note(
+    playlist_id: int,
+    version_id: int,
+    user_email: str,
+    data: DraftNoteUpdate,
+    provider: StorageProviderDep,
+) -> DraftNote:
+    """Create or update a user's draft note."""
+    return await provider.upsert_draft_note(user_email, playlist_id, version_id, data)
+
+
+@app.delete(
+    "/playlists/{playlist_id}/versions/{version_id}/draft-notes/{user_email}",
+    tags=["Draft Notes"],
+    summary="Delete a draft note",
+    description="Delete a user's draft note for the playlist/version.",
+    response_model=bool,
+)
+async def delete_draft_note(
+    playlist_id: int,
+    version_id: int,
+    user_email: str,
+    provider: StorageProviderDep,
+) -> bool:
+    """Delete a user's draft note."""
+    deleted = await provider.delete_draft_note(user_email, playlist_id, version_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Draft note not found")
+    return True

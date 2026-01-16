@@ -4,6 +4,10 @@ import {
   GetPlaylistsForProjectParams,
   GetVersionsForPlaylistParams,
   GetUserByEmailParams,
+  GetDraftNoteParams,
+  UpsertDraftNoteParams,
+  DeleteDraftNoteParams,
+  DraftNote,
   Playlist,
   Project,
   User as DNAUser,
@@ -88,6 +92,14 @@ class ApiHandler {
     return response.data;
   }
 
+  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.axiosInstance.delete(
+      url,
+      config
+    );
+    return response.data;
+  }
+
   async getProjectsForUser(params: GetProjectsForUserParams): Promise<Project[]> {
     return this.get<Project[]>(`/projects/user/${encodeURIComponent(params.userEmail)}`);
   }
@@ -102,6 +114,25 @@ class ApiHandler {
 
   async getUserByEmail(params: GetUserByEmailParams): Promise<DNAUser> {
     return this.get<DNAUser>(`/users/${encodeURIComponent(params.userEmail)}`);
+  }
+
+  async getDraftNote(params: GetDraftNoteParams): Promise<DraftNote | null> {
+    return this.get<DraftNote | null>(
+      `/playlists/${params.playlistId}/versions/${params.versionId}/draft-notes/${encodeURIComponent(params.userEmail)}`
+    );
+  }
+
+  async upsertDraftNote(params: UpsertDraftNoteParams): Promise<DraftNote> {
+    return this.put<DraftNote>(
+      `/playlists/${params.playlistId}/versions/${params.versionId}/draft-notes/${encodeURIComponent(params.userEmail)}`,
+      params.data
+    );
+  }
+
+  async deleteDraftNote(params: DeleteDraftNoteParams): Promise<boolean> {
+    return this.delete<boolean>(
+      `/playlists/${params.playlistId}/versions/${params.versionId}/draft-notes/${encodeURIComponent(params.userEmail)}`
+    );
   }
 }
 

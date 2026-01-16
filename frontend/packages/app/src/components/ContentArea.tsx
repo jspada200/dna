@@ -7,6 +7,8 @@ import { AssistantPanel } from './AssistantPanel';
 interface ContentAreaProps {
   version?: Version | null;
   versions?: Version[];
+  playlistId?: number | null;
+  userEmail?: string | null;
   onVersionSelect?: (version: Version) => void;
   onRefresh?: () => void;
 }
@@ -65,7 +67,7 @@ function getStatusLabel(status?: string): string {
 
 const IN_REVIEW_STATUS = 'rev';
 
-export function ContentArea({ version, versions = [], onVersionSelect, onRefresh }: ContentAreaProps) {
+export function ContentArea({ version, versions = [], playlistId, userEmail, onVersionSelect, onRefresh }: ContentAreaProps) {
   const currentIndex = version ? versions.findIndex(v => v.id === version.id) : -1;
   const canGoBack = currentIndex > 0;
   const canGoNext = currentIndex >= 0 && currentIndex < versions.length - 1;
@@ -131,7 +133,7 @@ export function ContentArea({ version, versions = [], onVersionSelect, onRefresh
         hasInReview={hasInReview}
         onRefresh={onRefresh}
       />
-      <NoteEditor versionId={version.id} />
+      <NoteEditor playlistId={playlistId} versionId={version.id} userEmail={userEmail} />
       <AssistantPanel />
     </ContentWrapper>
   );

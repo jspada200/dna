@@ -1,136 +1,214 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { DraftNote, DraftNoteUpdate } from '@dna/core';
+import { apiHandler } from '../api';
 
-export interface DraftNote {
-  versionId: number;
+export interface LocalDraftNote {
   content: string;
   subject: string;
   to: string;
   cc: string;
-  links: string;
+  linksText: string;
   versionStatus: string;
-  updatedAt: string;
 }
 
-const STORAGE_KEY_PREFIX = 'dna-draft-note-';
-
-function getStorageKey(versionId: number): string {
-  return `${STORAGE_KEY_PREFIX}${versionId}`;
+export interface UseDraftNoteParams {
+  playlistId: number | null | undefined;
+  versionId: number | null | undefined;
+  userEmail: string | null | undefined;
 }
 
-function createEmptyDraft(versionId: number): DraftNote {
+export interface UseDraftNoteResult {
+  draftNote: LocalDraftNote | null;
+  updateDraftNote: (updates: Partial<LocalDraftNote>) => void;
+  clearDraftNote: () => void;
+  isSaving: boolean;
+  isLoading: boolean;
+}
+
+function createEmptyDraft(): LocalDraftNote {
   return {
-    versionId,
     content: '',
     subject: '',
     to: '',
     cc: '',
-    links: '',
+    linksText: '',
     versionStatus: '',
-    updatedAt: new Date().toISOString(),
   };
 }
 
-function loadDraftFromStorage(versionId: number): DraftNote {
-  try {
-    const stored = localStorage.getItem(getStorageKey(versionId));
-    if (stored) {
-      const parsed = JSON.parse(stored) as DraftNote;
-      if (parsed.versionId === versionId) {
-        return parsed;
-      }
-    }
-  } catch {
-    // ignore parse errors
-  }
-  return createEmptyDraft(versionId);
+function backendToLocal(note: DraftNote): LocalDraftNote {
+  return {
+    content: note.content,
+    subject: note.subject,
+    to: note.to,
+    cc: note.cc,
+    linksText: '',
+    versionStatus: note.version_status,
+  };
 }
 
-function saveDraftToStorage(draft: DraftNote): void {
-  try {
-    localStorage.setItem(getStorageKey(draft.versionId), JSON.stringify(draft));
-  } catch {
-    // ignore storage errors
-  }
+function localToUpdate(local: LocalDraftNote): DraftNoteUpdate {
+  return {
+    content: local.content,
+    subject: local.subject,
+    to: local.to,
+    cc: local.cc,
+    links: [],
+    version_status: local.versionStatus,
+  };
 }
 
-function removeDraftFromStorage(versionId: number): void {
-  try {
-    localStorage.removeItem(getStorageKey(versionId));
-  } catch {
-    // ignore storage errors
-  }
-}
-
-export interface UseDraftNoteResult {
-  draftNote: DraftNote | null;
-  updateDraftNote: (updates: Partial<Omit<DraftNote, 'versionId' | 'updatedAt'>>) => void;
-  clearDraftNote: () => void;
-}
-
-export function useDraftNote(versionId: number | null | undefined): UseDraftNoteResult {
-  const [draftNote, setDraftNote] = useState<DraftNote | null>(null);
+export function useDraftNote({
+  playlistId,
+  versionId,
+  userEmail,
+}: UseDraftNoteParams): UseDraftNoteResult {
+  const queryClient = useQueryClient();
+  const [localDraft, setLocalDraft] = useState<LocalDraftNote | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingUpdatesRef = useRef<DraftNote | null>(null);
+  const pendingMutationRef = useRef<Promise<DraftNote> | null>(null);
+  const pendingDataRef = useRef<LocalDraftNote | null>(null);
+
+  const isEnabled =
+    playlistId != null && versionId != null && userEmail != null;
+
+  const queryKey = ['draftNote', playlistId, versionId, userEmail];
+
+  const { data: serverDraft, isLoading } = useQuery<DraftNote | null, Error>({
+    queryKey,
+    queryFn: () =>
+      apiHandler.getDraftNote({
+        playlistId: playlistId!,
+        versionId: versionId!,
+        userEmail: userEmail!,
+      }),
+    enabled: isEnabled,
+    staleTime: 0,
+  });
+
+  const upsertMutation = useMutation<
+    DraftNote,
+    Error,
+    { data: DraftNoteUpdate }
+  >({
+    mutationFn: ({ data }) =>
+      apiHandler.upsertDraftNote({
+        playlistId: playlistId!,
+        versionId: versionId!,
+        userEmail: userEmail!,
+        data,
+      }),
+    onSuccess: (result) => {
+      queryClient.setQueryData(queryKey, result);
+    },
+  });
+
+  const deleteMutation = useMutation<boolean, Error, void>({
+    mutationFn: () =>
+      apiHandler.deleteDraftNote({
+        playlistId: playlistId!,
+        versionId: versionId!,
+        userEmail: userEmail!,
+      }),
+    onSuccess: () => {
+      queryClient.setQueryData(queryKey, null);
+    },
+  });
 
   useEffect(() => {
-    if (versionId == null) {
-      setDraftNote(null);
+    if (!isEnabled) {
+      setLocalDraft(null);
       return;
     }
-    const loaded = loadDraftFromStorage(versionId);
-    setDraftNote(loaded);
-  }, [versionId]);
+    if (serverDraft) {
+      setLocalDraft(backendToLocal(serverDraft));
+    } else if (serverDraft === null && !isLoading) {
+      setLocalDraft(createEmptyDraft());
+    }
+  }, [serverDraft, isEnabled, isLoading]);
 
   useEffect(() => {
-    return () => {
+    const flushPending = () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
-        if (pendingUpdatesRef.current) {
-          saveDraftToStorage(pendingUpdatesRef.current);
+        debounceTimerRef.current = null;
+      }
+      if (pendingDataRef.current && isEnabled) {
+        const data = localToUpdate(pendingDataRef.current);
+        pendingMutationRef.current = upsertMutation.mutateAsync({ data });
+        pendingDataRef.current = null;
+      }
+    };
+
+    return () => {
+      flushPending();
+    };
+  }, [playlistId, versionId, userEmail, isEnabled]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (pendingDataRef.current || pendingMutationRef.current) {
+        e.preventDefault();
+        if (pendingDataRef.current && isEnabled) {
+          const data = localToUpdate(pendingDataRef.current);
+          navigator.sendBeacon?.(
+            `${import.meta.env.VITE_API_BASE_URL}/playlists/${playlistId}/versions/${versionId}/draft-notes/${encodeURIComponent(userEmail!)}`,
+            JSON.stringify(data)
+          );
         }
       }
     };
-  }, []);
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [playlistId, versionId, userEmail, isEnabled]);
 
   const updateDraftNote = useCallback(
-    (updates: Partial<Omit<DraftNote, 'versionId' | 'updatedAt'>>) => {
-      if (versionId == null) return;
+    (updates: Partial<LocalDraftNote>) => {
+      if (!isEnabled) return;
 
-      setDraftNote((prev) => {
-        const base = prev ?? createEmptyDraft(versionId);
-        const updated: DraftNote = {
+      setLocalDraft((prev) => {
+        const base = prev ?? createEmptyDraft();
+        const updated: LocalDraftNote = {
           ...base,
           ...updates,
-          versionId,
-          updatedAt: new Date().toISOString(),
         };
-        pendingUpdatesRef.current = updated;
+        pendingDataRef.current = updated;
 
         if (debounceTimerRef.current) {
           clearTimeout(debounceTimerRef.current);
         }
         debounceTimerRef.current = setTimeout(() => {
-          if (pendingUpdatesRef.current) {
-            saveDraftToStorage(pendingUpdatesRef.current);
-            pendingUpdatesRef.current = null;
+          if (pendingDataRef.current) {
+            const data = localToUpdate(pendingDataRef.current);
+            pendingMutationRef.current = upsertMutation.mutateAsync({ data });
+            pendingDataRef.current = null;
           }
         }, 300);
 
         return updated;
       });
     },
-    [versionId]
+    [isEnabled, upsertMutation]
   );
 
   const clearDraftNote = useCallback(() => {
-    if (versionId == null) return;
+    if (!isEnabled) return;
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
-      pendingUpdatesRef.current = null;
+      debounceTimerRef.current = null;
     }
-    removeDraftFromStorage(versionId);
-    setDraftNote(createEmptyDraft(versionId));
-  }, [versionId]);
+    pendingDataRef.current = null;
+    deleteMutation.mutate();
+    setLocalDraft(createEmptyDraft());
+  }, [isEnabled, deleteMutation]);
 
-  return { draftNote, updateDraftNote, clearDraftNote };
+  return {
+    draftNote: localDraft,
+    updateDraftNote,
+    clearDraftNote,
+    isSaving: upsertMutation.isPending || deleteMutation.isPending,
+    isLoading,
+  };
 }

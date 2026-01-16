@@ -140,3 +140,51 @@ export interface GetVersionsForPlaylistParams {
 export interface GetUserByEmailParams {
   userEmail: string;
 }
+
+export interface DraftNoteLink {
+  entity_type: string;
+  entity_id: number;
+}
+
+export interface DraftNote {
+  _id: string;
+  user_email: string;
+  playlist_id: number;
+  version_id: number;
+  content: string;
+  subject: string;
+  to: string;
+  cc: string;
+  links: DraftNoteLink[];
+  version_status: string;
+  updated_at: string;
+  created_at: string;
+}
+
+export interface DraftNoteUpdate {
+  content?: string;
+  subject?: string;
+  to?: string;
+  cc?: string;
+  links?: DraftNoteLink[];
+  version_status?: string;
+}
+
+export interface GetDraftNoteParams {
+  playlistId: number;
+  versionId: number;
+  userEmail: string;
+}
+
+export interface UpsertDraftNoteParams {
+  playlistId: number;
+  versionId: number;
+  userEmail: string;
+  data: DraftNoteUpdate;
+}
+
+export interface DeleteDraftNoteParams {
+  playlistId: number;
+  versionId: number;
+  userEmail: string;
+}

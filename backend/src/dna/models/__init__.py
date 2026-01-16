@@ -3,6 +3,13 @@
 Pydantic models for DNA entities.
 """
 
+from dna.models.draft_note import (
+    DraftNote,
+    DraftNoteBase,
+    DraftNoteCreate,
+    DraftNoteLink,
+    DraftNoteUpdate,
+)
 from dna.models.entity import (
     ENTITY_MODELS,
     Asset,
@@ -39,4 +46,9 @@ __all__ = [
     "CreateNoteRequest",
     "FilterCondition",
     "FindRequest",
+    "DraftNote",
+    "DraftNoteBase",
+    "DraftNoteCreate",
+    "DraftNoteLink",
+    "DraftNoteUpdate",
 ]

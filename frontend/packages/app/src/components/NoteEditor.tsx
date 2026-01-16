@@ -4,7 +4,9 @@ import { MarkdownEditor } from './MarkdownEditor';
 import { useDraftNote } from '../hooks';
 
 interface NoteEditorProps {
+  playlistId?: number | null;
   versionId?: number | null;
+  userEmail?: string | null;
 }
 
 const EditorWrapper = styled.div`
@@ -46,8 +48,12 @@ const EditorTitle = styled.h2`
   flex-shrink: 0;
 `;
 
-export function NoteEditor({ versionId }: NoteEditorProps) {
-  const { draftNote, updateDraftNote } = useDraftNote(versionId);
+export function NoteEditor({ playlistId, versionId, userEmail }: NoteEditorProps) {
+  const { draftNote, updateDraftNote } = useDraftNote({
+    playlistId,
+    versionId,
+    userEmail,
+  });
 
   const handleContentChange = (value: string) => {
     updateDraftNote({ content: value });
@@ -66,7 +72,7 @@ export function NoteEditor({ versionId }: NoteEditorProps) {
   };
 
   const handleLinksChange = (value: string) => {
-    updateDraftNote({ links: value });
+    updateDraftNote({ linksText: value });
   };
 
   const handleVersionStatusChange = (value: string) => {
@@ -83,7 +89,7 @@ export function NoteEditor({ versionId }: NoteEditorProps) {
           toValue={draftNote?.to ?? ''}
           ccValue={draftNote?.cc ?? ''}
           subjectValue={draftNote?.subject ?? ''}
-          linksValue={draftNote?.links ?? ''}
+          linksValue={draftNote?.linksText ?? ''}
           versionStatus={draftNote?.versionStatus ?? ''}
           onToChange={handleToChange}
           onCcChange={handleCcChange}

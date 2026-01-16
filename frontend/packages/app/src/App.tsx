@@ -68,6 +68,8 @@ function App() {
       <ContentArea
         version={selectedVersion}
         versions={versions}
+        playlistId={selectedPlaylist.id}
+        userEmail={userEmail}
         onVersionSelect={handleVersionSelect}
         onRefresh={handleRefresh}
       />

@@ -1,2 +1,6 @@
 export { useDraftNote } from './useDraftNote';
-export type { DraftNote, UseDraftNoteResult } from './useDraftNote';
+export type {
+  LocalDraftNote,
+  UseDraftNoteParams,
+  UseDraftNoteResult,
+} from './useDraftNote';
