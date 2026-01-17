@@ -324,7 +324,9 @@ export function NoteOptionsInline({
         <OptionChip>
           <ChipLabel>Status:</ChipLabel>
           {versionStatus ? (
-            <ChipValue>{statusLabels[versionStatus] || versionStatus}</ChipValue>
+            <ChipValue>
+              {statusLabels[versionStatus] || versionStatus}
+            </ChipValue>
           ) : (
             <EmptyValue>—</EmptyValue>
           )}

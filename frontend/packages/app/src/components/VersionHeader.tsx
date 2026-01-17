@@ -243,9 +243,7 @@ export function VersionHeader({
   canGoNext = true,
   hasInReview = true,
 }: VersionHeaderProps) {
-  const displayTitle = shotCode && versionNumber 
-    ? `${shotCode} - ` 
-    : '';
+  const displayTitle = shotCode && versionNumber ? `${shotCode} - ` : '';
   const displayCode = versionNumber || shotCode || 'Untitled Version';
 
   return (
@@ -275,7 +273,8 @@ export function VersionHeader({
         </Thumbnail>
         <MetadataSection>
           <VersionTitle>
-            {displayTitle}<VersionTitleCode>{displayCode}</VersionTitleCode>
+            {displayTitle}
+            <VersionTitleCode>{displayCode}</VersionTitleCode>
           </VersionTitle>
           <MetadataRow>
             <MetadataLabel>Submitted by:</MetadataLabel>

@@ -243,7 +243,7 @@ export function Sidebar({
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const versionRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
+
   const {
     data: versions,
     isLoading,
@@ -262,7 +262,7 @@ export function Sidebar({
 
   const handleSearchVersionSelect = (version: Version) => {
     onVersionSelect?.(version);
-    
+
     setTimeout(() => {
       const versionElement = versionRefs.current.get(version.id);
       if (versionElement && scrollContainerRef.current) {
@@ -356,7 +356,11 @@ export function Sidebar({
               <Button size="2" variant="solid" color="violet">
                 Publish Notes
               </Button>
-              <UserAvatar name={user?.name ?? userEmail} size="2" onLogout={onLogout} />
+              <UserAvatar
+                name={user?.name ?? userEmail}
+                size="2"
+                onLogout={onLogout}
+              />
             </>
           )}
           <CollapseButton
@@ -380,7 +384,10 @@ export function Sidebar({
         <Toolbar>
           {!isSearchExpanded && (
             <ToolbarLeft>
-              <SplitButton menuItems={playlistMenuItems} onClick={() => refetch()}>
+              <SplitButton
+                menuItems={playlistMenuItems}
+                onClick={() => refetch()}
+              >
                 Reload Playlist
               </SplitButton>
             </ToolbarLeft>

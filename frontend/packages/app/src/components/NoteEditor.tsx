@@ -61,13 +61,17 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
       userEmail,
     });
 
-    useImperativeHandle(ref, () => ({
-      appendContent: (content: string) => {
-        const currentContent = draftNote?.content ?? '';
-        const separator = currentContent.trim() ? '\n\n---\n\n' : '';
-        updateDraftNote({ content: currentContent + separator + content });
-      },
-    }), [draftNote?.content, updateDraftNote]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        appendContent: (content: string) => {
+          const currentContent = draftNote?.content ?? '';
+          const separator = currentContent.trim() ? '\n\n---\n\n' : '';
+          updateDraftNote({ content: currentContent + separator + content });
+        },
+      }),
+      [draftNote?.content, updateDraftNote]
+    );
 
     const handleContentChange = (value: string) => {
       updateDraftNote({ content: value });
@@ -94,34 +98,34 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
     };
 
     return (
-    <EditorWrapper>
-      <EditorHeader>
-        <TitleRow>
-          <EditorTitle>New Note</EditorTitle>
-        </TitleRow>
-        <NoteOptionsInline
-          toValue={draftNote?.to ?? ''}
-          ccValue={draftNote?.cc ?? ''}
-          subjectValue={draftNote?.subject ?? ''}
-          linksValue={draftNote?.linksText ?? ''}
-          versionStatus={draftNote?.versionStatus ?? ''}
-          onToChange={handleToChange}
-          onCcChange={handleCcChange}
-          onSubjectChange={handleSubjectChange}
-          onLinksChange={handleLinksChange}
-          onVersionStatusChange={handleVersionStatusChange}
-        />
-      </EditorHeader>
+      <EditorWrapper>
+        <EditorHeader>
+          <TitleRow>
+            <EditorTitle>New Note</EditorTitle>
+          </TitleRow>
+          <NoteOptionsInline
+            toValue={draftNote?.to ?? ''}
+            ccValue={draftNote?.cc ?? ''}
+            subjectValue={draftNote?.subject ?? ''}
+            linksValue={draftNote?.linksText ?? ''}
+            versionStatus={draftNote?.versionStatus ?? ''}
+            onToChange={handleToChange}
+            onCcChange={handleCcChange}
+            onSubjectChange={handleSubjectChange}
+            onLinksChange={handleLinksChange}
+            onVersionStatusChange={handleVersionStatusChange}
+          />
+        </EditorHeader>
 
-      <EditorContent>
-        <MarkdownEditor
-          value={draftNote?.content ?? ''}
-          onChange={handleContentChange}
-          placeholder="Write your notes here... (supports **markdown**)"
-          minHeight={120}
-        />
-      </EditorContent>
-    </EditorWrapper>
+        <EditorContent>
+          <MarkdownEditor
+            value={draftNote?.content ?? ''}
+            onChange={handleContentChange}
+            placeholder="Write your notes here... (supports **markdown**)"
+            minHeight={120}
+          />
+        </EditorContent>
+      </EditorWrapper>
     );
   }
 );

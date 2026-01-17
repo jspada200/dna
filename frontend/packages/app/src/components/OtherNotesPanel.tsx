@@ -85,7 +85,10 @@ const NoteContent = styled.div`
     }
   }
 
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     margin: 0.75em 0 0.25em 0;
     font-weight: 600;
     color: ${({ theme }) => theme.colors.text.primary};
@@ -94,9 +97,15 @@ const NoteContent = styled.div`
     }
   }
 
-  h1 { font-size: 1.4em; }
-  h2 { font-size: 1.2em; }
-  h3 { font-size: 1.1em; }
+  h1 {
+    font-size: 1.4em;
+  }
+  h2 {
+    font-size: 1.2em;
+  }
+  h3 {
+    font-size: 1.1em;
+  }
 
   strong {
     font-weight: 600;
@@ -135,7 +144,8 @@ const NoteContent = styled.div`
     color: ${({ theme }) => theme.colors.text.muted};
   }
 
-  ul, ol {
+  ul,
+  ol {
     margin: 0.5em 0;
     padding-left: 20px;
   }
@@ -220,7 +230,7 @@ function formatTimeAgo(dateString: string): string {
   if (isNaN(date.getTime())) {
     return '';
   }
-  
+
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(Math.abs(diffMs) / 60000);
@@ -287,7 +297,10 @@ function NoteItem({
             </ActionButton>
           </Tooltip>
           <Tooltip content="Insert below your note">
-            <ActionButton onClick={onInsert} aria-label="Insert note below yours">
+            <ActionButton
+              onClick={onInsert}
+              aria-label="Insert note below yours"
+            >
               <ArrowDownToLine size={12} />
               Insert
             </ActionButton>
