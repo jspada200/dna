@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Playlist, Project, Version } from '@dna/core';
-import { Layout, ContentArea, ProjectSelector, clearUserSession } from './components';
+import {
+  Layout,
+  ContentArea,
+  ProjectSelector,
+  clearUserSession,
+} from './components';
 import { useGetVersionsForPlaylist } from './api';
 
 function App() {
@@ -20,10 +25,12 @@ function App() {
   const handleRefresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ['allDraftNotes'] });
     await queryClient.invalidateQueries({ queryKey: ['draftNote'] });
-    
+
     const result = await refetch();
     if (result.data && selectedVersion) {
-      const updatedVersion = result.data.find(v => v.id === selectedVersion.id);
+      const updatedVersion = result.data.find(
+        (v) => v.id === selectedVersion.id
+      );
       if (updatedVersion) {
         setSelectedVersion(updatedVersion);
       }

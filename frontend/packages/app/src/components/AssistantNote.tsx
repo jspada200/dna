@@ -28,7 +28,11 @@ const BotIcon = styled.div`
   justify-content: center;
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, ${({ theme }) => theme.colors.accent.main} 0%, ${({ theme }) => theme.colors.accent.subtle} 100%);
+  background: linear-gradient(
+    135deg,
+    ${({ theme }) => theme.colors.accent.main} 0%,
+    ${({ theme }) => theme.colors.accent.subtle} 100%
+  );
   border-radius: ${({ theme }) => theme.radii.full};
   color: white;
 `;
@@ -69,7 +73,10 @@ const NoteContent = styled.div`
     }
   }
 
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     margin: 0.75em 0 0.25em 0;
     font-weight: 600;
     color: ${({ theme }) => theme.colors.text.primary};
@@ -78,9 +85,15 @@ const NoteContent = styled.div`
     }
   }
 
-  h1 { font-size: 1.4em; }
-  h2 { font-size: 1.2em; }
-  h3 { font-size: 1.1em; }
+  h1 {
+    font-size: 1.4em;
+  }
+  h2 {
+    font-size: 1.2em;
+  }
+  h3 {
+    font-size: 1.1em;
+  }
 
   strong {
     font-weight: 600;
@@ -119,7 +132,8 @@ const NoteContent = styled.div`
     color: ${({ theme }) => theme.colors.text.muted};
   }
 
-  ul, ol {
+  ul,
+  ol {
     margin: 0.5em 0;
     padding-left: 20px;
   }
@@ -228,13 +242,19 @@ export function AssistantNote({
         <ActionBar>
           <ActionButtons>
             <Tooltip content="Copy to clipboard">
-              <ActionButton onClick={handleCopy} aria-label="Copy note to clipboard">
+              <ActionButton
+                onClick={handleCopy}
+                aria-label="Copy note to clipboard"
+              >
                 <Copy size={12} />
                 Copy
               </ActionButton>
             </Tooltip>
             <Tooltip content="Insert below your note">
-              <ActionButton onClick={handleInsert} aria-label="Insert note below yours">
+              <ActionButton
+                onClick={handleInsert}
+                aria-label="Insert note below yours"
+              >
                 <ArrowDownToLine size={12} />
                 Insert
               </ActionButton>

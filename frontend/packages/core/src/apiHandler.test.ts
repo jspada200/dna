@@ -392,7 +392,10 @@ describe('ApiHandler', () => {
 
       const result = await api.delete<typeof mockData>('/test/1');
 
-      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/test/1', undefined);
+      expect(mockAxiosInstance.delete).toHaveBeenCalledWith(
+        '/test/1',
+        undefined
+      );
       expect(result).toEqual(mockData);
     });
 
