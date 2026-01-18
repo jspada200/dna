@@ -72,7 +72,7 @@ export function AssistantPanel({
     <PanelWrapper>
       <StyledTabsRoot defaultValue={activeTab}>
         <StyledTabsList>
-          <StyledTabsTrigger value="assistant">AI Assistent</StyledTabsTrigger>
+          <StyledTabsTrigger value="assistant">AI Assistant</StyledTabsTrigger>
           <StyledTabsTrigger value="transcript">Transcript</StyledTabsTrigger>
           <StyledTabsTrigger value="other">Other Pending Notes</StyledTabsTrigger>
         </StyledTabsList>
