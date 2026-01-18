@@ -98,19 +98,22 @@ const ChevronButton = styled.button<{ $disabled?: boolean }>`
   border-radius: 4px;
   border: none;
   background: transparent;
-  color: ${({ theme, $disabled }) => $disabled ? theme.colors.text.muted + '60' : theme.colors.text.muted};
-  cursor: ${({ $disabled }) => $disabled ? 'not-allowed' : 'pointer'};
+  color: ${({ theme, $disabled }) =>
+    $disabled ? theme.colors.text.muted + '60' : theme.colors.text.muted};
+  cursor: ${({ $disabled }) => ($disabled ? 'not-allowed' : 'pointer')};
   transition: all ${({ theme }) => theme.transitions.base};
   flex-shrink: 0;
-  opacity: ${({ $disabled }) => $disabled ? 0.5 : 1};
+  opacity: ${({ $disabled }) => ($disabled ? 0.5 : 1)};
 
   &:hover {
-    background: ${({ theme, $disabled }) => $disabled ? 'transparent' : theme.colors.accent.subtle};
-    color: ${({ theme, $disabled }) => $disabled ? theme.colors.text.muted + '60' : theme.colors.accent.main};
+    background: ${({ theme, $disabled }) =>
+      $disabled ? 'transparent' : theme.colors.accent.subtle};
+    color: ${({ theme, $disabled }) =>
+      $disabled ? theme.colors.text.muted + '60' : theme.colors.accent.main};
   }
 
   &:active {
-    transform: ${({ $disabled }) => $disabled ? 'none' : 'scale(0.95)'};
+    transform: ${({ $disabled }) => ($disabled ? 'none' : 'scale(0.95)')};
   }
 
   svg {
@@ -167,7 +170,7 @@ const SearchButton = styled.button`
 
 function searchVersionAttributes(version: Version, query: string): boolean {
   const lowerQuery = query.toLowerCase();
-  
+
   const searchableFields = [
     version.name,
     version.description,
@@ -179,8 +182,8 @@ function searchVersionAttributes(version: Version, query: string): boolean {
     version.project?.name,
     String(version.id),
   ];
-  
-  return searchableFields.some(field => 
+
+  return searchableFields.some((field) =>
     field?.toLowerCase().includes(lowerQuery)
   );
 }
@@ -199,7 +202,9 @@ export function ExpandableSearch({
 
   const matchingVersions = useMemo(() => {
     if (!searchQuery.trim()) return [];
-    return versions.filter(version => searchVersionAttributes(version, searchQuery));
+    return versions.filter((version) =>
+      searchVersionAttributes(version, searchQuery)
+    );
   }, [versions, searchQuery]);
 
   const matchCount = matchingVersions.length;
@@ -217,7 +222,9 @@ export function ExpandableSearch({
 
   useEffect(() => {
     if (selectedVersionId != null && hasMatches) {
-      const selectedIndex = matchingVersions.findIndex(v => v.id === selectedVersionId);
+      const selectedIndex = matchingVersions.findIndex(
+        (v) => v.id === selectedVersionId
+      );
       setCurrentMatchIndex(selectedIndex);
     } else {
       setCurrentMatchIndex(-1);
@@ -249,14 +256,18 @@ export function ExpandableSearch({
 
   const handlePreviousMatch = () => {
     if (!hasMatches) return;
-    const newIndex = currentMatchIndex <= 0 ? matchCount - 1 : currentMatchIndex - 1;
+    const newIndex =
+      currentMatchIndex <= 0 ? matchCount - 1 : currentMatchIndex - 1;
     setCurrentMatchIndex(newIndex);
     onVersionSelect?.(matchingVersions[newIndex]);
   };
 
   const handleNextMatch = () => {
     if (!hasMatches) return;
-    const newIndex = currentMatchIndex < 0 || currentMatchIndex >= matchCount - 1 ? 0 : currentMatchIndex + 1;
+    const newIndex =
+      currentMatchIndex < 0 || currentMatchIndex >= matchCount - 1
+        ? 0
+        : currentMatchIndex + 1;
     setCurrentMatchIndex(newIndex);
     onVersionSelect?.(matchingVersions[newIndex]);
   };

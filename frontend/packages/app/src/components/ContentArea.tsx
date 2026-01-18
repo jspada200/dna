@@ -68,12 +68,21 @@ function getStatusLabel(status?: string): string {
 
 const IN_REVIEW_STATUS = 'rev';
 
-export function ContentArea({ version, versions = [], playlistId, userEmail, onVersionSelect, onRefresh }: ContentAreaProps) {
+export function ContentArea({
+  version,
+  versions = [],
+  playlistId,
+  userEmail,
+  onVersionSelect,
+  onRefresh,
+}: ContentAreaProps) {
   const noteEditorRef = useRef<NoteEditorHandle>(null);
-  const currentIndex = version ? versions.findIndex(v => v.id === version.id) : -1;
+  const currentIndex = version
+    ? versions.findIndex((v) => v.id === version.id)
+    : -1;
   const canGoBack = currentIndex > 0;
   const canGoNext = currentIndex >= 0 && currentIndex < versions.length - 1;
-  const inReviewVersion = versions.find(v => v.status === IN_REVIEW_STATUS);
+  const inReviewVersion = versions.find((v) => v.status === IN_REVIEW_STATUS);
   const hasInReview = !!inReviewVersion;
 
   const handleBack = () => {
@@ -112,7 +121,10 @@ export function ContentArea({ version, versions = [], playlistId, userEmail, onV
   }
 
   const entityName = version.entity?.name || '';
-  const versionNumber = version.name?.replace(entityName, '').replace(/^[\s\-_]+/, '') || version.name || '';
+  const versionNumber =
+    version.name?.replace(entityName, '').replace(/^[\s\-_]+/, '') ||
+    version.name ||
+    '';
   const links: string[] = [];
   if (version.task?.pipeline_step?.name) {
     links.push(version.task.pipeline_step.name);
@@ -139,7 +151,12 @@ export function ContentArea({ version, versions = [], playlistId, userEmail, onV
         hasInReview={hasInReview}
         onRefresh={onRefresh}
       />
-      <NoteEditor ref={noteEditorRef} playlistId={playlistId} versionId={version.id} userEmail={userEmail} />
+      <NoteEditor
+        ref={noteEditorRef}
+        playlistId={playlistId}
+        versionId={version.id}
+        userEmail={userEmail}
+      />
       <AssistantPanel
         playlistId={playlistId}
         versionId={version.id}

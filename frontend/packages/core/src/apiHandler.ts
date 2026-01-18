@@ -101,15 +101,23 @@ class ApiHandler {
     return response.data;
   }
 
-  async getProjectsForUser(params: GetProjectsForUserParams): Promise<Project[]> {
-    return this.get<Project[]>(`/projects/user/${encodeURIComponent(params.userEmail)}`);
+  async getProjectsForUser(
+    params: GetProjectsForUserParams
+  ): Promise<Project[]> {
+    return this.get<Project[]>(
+      `/projects/user/${encodeURIComponent(params.userEmail)}`
+    );
   }
 
-  async getPlaylistsForProject(params: GetPlaylistsForProjectParams): Promise<Playlist[]> {
+  async getPlaylistsForProject(
+    params: GetPlaylistsForProjectParams
+  ): Promise<Playlist[]> {
     return this.get<Playlist[]>(`/projects/${params.projectId}/playlists`);
   }
 
-  async getVersionsForPlaylist(params: GetVersionsForPlaylistParams): Promise<Version[]> {
+  async getVersionsForPlaylist(
+    params: GetVersionsForPlaylistParams
+  ): Promise<Version[]> {
     return this.get<Version[]>(`/playlists/${params.playlistId}/versions`);
   }
 

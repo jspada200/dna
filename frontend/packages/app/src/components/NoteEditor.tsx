@@ -61,13 +61,17 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(
       userEmail,
     });
 
-    useImperativeHandle(ref, () => ({
-      appendContent: (content: string) => {
-        const currentContent = draftNote?.content ?? '';
-        const separator = currentContent.trim() ? '\n\n---\n\n' : '';
-        updateDraftNote({ content: currentContent + separator + content });
-      },
-    }), [draftNote?.content, updateDraftNote]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        appendContent: (content: string) => {
+          const currentContent = draftNote?.content ?? '';
+          const separator = currentContent.trim() ? '\n\n---\n\n' : '';
+          updateDraftNote({ content: currentContent + separator + content });
+        },
+      }),
+      [draftNote?.content, updateDraftNote]
+    );
 
     const handleContentChange = (value: string) => {
       updateDraftNote({ content: value });

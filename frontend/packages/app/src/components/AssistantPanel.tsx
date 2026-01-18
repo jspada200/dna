@@ -74,7 +74,9 @@ export function AssistantPanel({
         <StyledTabsList>
           <StyledTabsTrigger value="assistant">AI Assistant</StyledTabsTrigger>
           <StyledTabsTrigger value="transcript">Transcript</StyledTabsTrigger>
-          <StyledTabsTrigger value="other">Other Pending Notes</StyledTabsTrigger>
+          <StyledTabsTrigger value="other">
+            Other Pending Notes
+          </StyledTabsTrigger>
         </StyledTabsList>
 
         <StyledTabsContent value="assistant">

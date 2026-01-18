@@ -323,14 +323,18 @@ export function MarkdownEditor({
         </ToolbarButton>
         <Divider />
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 1 }).run()
+          }
           $active={editor.isActive('heading', { level: 1 })}
           title="Heading 1"
         >
           <Heading1 />
         </ToolbarButton>
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 2 }).run()
+          }
           $active={editor.isActive('heading', { level: 2 })}
           title="Heading 2"
         >
