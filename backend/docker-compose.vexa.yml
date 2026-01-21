@@ -1,0 +1,27 @@
+services:
+  vexa:
+    image: vexaai/vexa-lite:latest
+    platform: linux/amd64
+    container_name: vexa
+    ports:
+      - "8056:8056"
+    environment:
+      - DATABASE_URL=postgresql://vexa:vexa@vexa-db:5432/vexa
+      - ADMIN_API_TOKEN=your-admin-token
+      - TRANSCRIBER_URL=https://transcription.vexa.ai/v1/audio/transcriptions
+      - TRANSCRIBER_API_KEY=Ovlykv20X5bGKgxrKAMNrjxbcYzU4irGK6aLy1HPiyo
+    depends_on:
+      - vexa-db
+
+  vexa-db:
+    image: postgres:16-alpine
+    container_name: vexa-db
+    environment:
+      - POSTGRES_USER=vexa
+      - POSTGRES_PASSWORD=vexa
+      - POSTGRES_DB=vexa
+    volumes:
+      - vexa-db-data:/var/lib/postgresql/data
+
+volumes:
+  vexa-db-data:

@@ -19,6 +19,7 @@ import { ExpandableSearch } from './ExpandableSearch';
 import { SquareButton } from './SquareButton';
 import { VersionCard } from './VersionCard';
 import { useGetVersionsForPlaylist, useGetUserByEmail } from '../api';
+import { usePlaylistMetadata } from '../hooks';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -254,6 +255,9 @@ export function Sidebar({
   } = useGetVersionsForPlaylist(playlistId);
 
   const { data: user } = useGetUserByEmail(userEmail);
+  const { data: playlistMetadata } = usePlaylistMetadata(playlistId);
+
+  const inReviewVersionId = playlistMetadata?.in_review;
 
   const playlistMenuItems = [
     { label: 'Replace Playlist', onSelect: onReplacePlaylist },
@@ -336,7 +340,7 @@ export function Sidebar({
                 department={version.task?.pipeline_step?.name}
                 thumbnailUrl={version.thumbnail}
                 selected={version.id === selectedVersionId}
-                inReview={false}
+                inReview={inReviewVersionId === version.id}
                 onClick={() => onVersionSelect?.(version)}
               />
             </div>

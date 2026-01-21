@@ -23,6 +23,10 @@ from dna.models.entity import (
     User,
     Version,
 )
+from dna.models.playlist_metadata import (
+    PlaylistMetadata,
+    PlaylistMetadataUpdate,
+)
 from dna.models.requests import (
     CreateNoteRequest,
     EntityLink,
@@ -51,4 +55,6 @@ __all__ = [
     "DraftNoteCreate",
     "DraftNoteLink",
     "DraftNoteUpdate",
+    "PlaylistMetadata",
+    "PlaylistMetadataUpdate",
 ]

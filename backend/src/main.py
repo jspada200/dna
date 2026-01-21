@@ -14,6 +14,8 @@ from dna.models import (
     FindRequest,
     Note,
     Playlist,
+    PlaylistMetadata,
+    PlaylistMetadataUpdate,
     Project,
     Shot,
     Task,
@@ -104,6 +106,10 @@ tags_metadata = [
     {
         "name": "Draft Notes",
         "description": "Operations for managing draft notes",
+    },
+    {
+        "name": "Playlist Metadata",
+        "description": "Operations for managing playlist metadata (in-review version and meeting ID)",
     },
 ]
 
@@ -516,4 +522,58 @@ async def delete_draft_note(
     deleted = await provider.delete_draft_note(user_email, playlist_id, version_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Draft note not found")
+    return True
+
+
+# -----------------------------------------------------------------------------
+# Playlist Metadata endpoints
+# -----------------------------------------------------------------------------
+
+
+@app.get(
+    "/playlists/{playlist_id}/metadata",
+    tags=["Playlist Metadata"],
+    summary="Get playlist metadata",
+    description="Retrieve metadata for a playlist including in-review version and meeting ID.",
+    response_model=Optional[PlaylistMetadata],
+)
+async def get_playlist_metadata(
+    playlist_id: int,
+    provider: StorageProviderDep,
+) -> Optional[PlaylistMetadata]:
+    """Get playlist metadata."""
+    return await provider.get_playlist_metadata(playlist_id)
+
+
+@app.put(
+    "/playlists/{playlist_id}/metadata",
+    tags=["Playlist Metadata"],
+    summary="Create or update playlist metadata",
+    description="Create or update metadata for a playlist (in-review version and meeting ID).",
+    response_model=PlaylistMetadata,
+)
+async def upsert_playlist_metadata(
+    playlist_id: int,
+    data: PlaylistMetadataUpdate,
+    provider: StorageProviderDep,
+) -> PlaylistMetadata:
+    """Create or update playlist metadata."""
+    return await provider.upsert_playlist_metadata(playlist_id, data)
+
+
+@app.delete(
+    "/playlists/{playlist_id}/metadata",
+    tags=["Playlist Metadata"],
+    summary="Delete playlist metadata",
+    description="Delete metadata for a playlist.",
+    response_model=bool,
+)
+async def delete_playlist_metadata(
+    playlist_id: int,
+    provider: StorageProviderDep,
+) -> bool:
+    """Delete playlist metadata."""
+    deleted = await provider.delete_playlist_metadata(playlist_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Playlist metadata not found")
     return True

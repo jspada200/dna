@@ -10,3 +10,9 @@ export type {
   UseOtherDraftNotesParams,
   UseOtherDraftNotesResult,
 } from './useOtherDraftNotes';
+
+export {
+  usePlaylistMetadata,
+  useUpsertPlaylistMetadata,
+  useSetInReview,
+} from './usePlaylistMetadata';

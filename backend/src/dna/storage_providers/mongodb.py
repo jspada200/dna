@@ -10,6 +10,7 @@ from typing import Any, Optional
 from pymongo import AsyncMongoClient, ReturnDocument
 
 from dna.models.draft_note import DraftNote, DraftNoteUpdate
+from dna.models.playlist_metadata import PlaylistMetadata, PlaylistMetadataUpdate
 from dna.storage_providers.storage_provider_base import StorageProviderBase
 
 
@@ -33,6 +34,10 @@ class MongoDBStorageProvider(StorageProviderBase):
     @property
     def draft_notes(self) -> Any:
         return self.db.draft_notes
+
+    @property
+    def playlist_metadata_collection(self) -> Any:
+        return self.db.playlist_metadata
 
     def _build_query(
         self, user_email: str, playlist_id: int, version_id: int
@@ -92,4 +97,34 @@ class MongoDBStorageProvider(StorageProviderBase):
     ) -> bool:
         query = self._build_query(user_email, playlist_id, version_id)
         result = await self.draft_notes.delete_one(query)
+        return result.deleted_count > 0
+
+    async def get_playlist_metadata(
+        self, playlist_id: int
+    ) -> Optional[PlaylistMetadata]:
+        query = {"playlist_id": playlist_id}
+        doc = await self.playlist_metadata_collection.find_one(query)
+        if doc:
+            doc["_id"] = str(doc["_id"])
+            return PlaylistMetadata(**doc)
+        return None
+
+    async def upsert_playlist_metadata(
+        self, playlist_id: int, data: PlaylistMetadataUpdate
+    ) -> PlaylistMetadata:
+        query = {"playlist_id": playlist_id}
+        update_fields = {k: v for k, v in data.model_dump().items() if v is not None}
+        update: dict[str, Any] = {
+            "$set": update_fields,
+            "$setOnInsert": {"playlist_id": playlist_id},
+        }
+        result = await self.playlist_metadata_collection.find_one_and_update(
+            query, update, upsert=True, return_document=ReturnDocument.AFTER
+        )
+        result["_id"] = str(result["_id"])
+        return PlaylistMetadata(**result)
+
+    async def delete_playlist_metadata(self, playlist_id: int) -> bool:
+        query = {"playlist_id": playlist_id}
+        result = await self.playlist_metadata_collection.delete_one(query)
         return result.deleted_count > 0

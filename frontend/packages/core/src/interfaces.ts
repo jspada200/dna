@@ -193,3 +193,28 @@ export interface GetAllDraftNotesParams {
   playlistId: number;
   versionId: number;
 }
+
+export interface PlaylistMetadata {
+  _id: string;
+  playlist_id: number;
+  in_review: number | null;
+  meeting_id: string | null;
+}
+
+export interface PlaylistMetadataUpdate {
+  in_review?: number | null;
+  meeting_id?: string | null;
+}
+
+export interface GetPlaylistMetadataParams {
+  playlistId: number;
+}
+
+export interface UpsertPlaylistMetadataParams {
+  playlistId: number;
+  data: PlaylistMetadataUpdate;
+}
+
+export interface DeletePlaylistMetadataParams {
+  playlistId: number;
+}

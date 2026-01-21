@@ -8,8 +8,12 @@ import {
   GetAllDraftNotesParams,
   UpsertDraftNoteParams,
   DeleteDraftNoteParams,
+  GetPlaylistMetadataParams,
+  UpsertPlaylistMetadataParams,
+  DeletePlaylistMetadataParams,
   DraftNote,
   Playlist,
+  PlaylistMetadata,
   Project,
   User as DNAUser,
   Version,
@@ -148,6 +152,29 @@ class ApiHandler {
     return this.get<DraftNote[]>(
       `/playlists/${params.playlistId}/versions/${params.versionId}/draft-notes`
     );
+  }
+
+  async getPlaylistMetadata(
+    params: GetPlaylistMetadataParams
+  ): Promise<PlaylistMetadata | null> {
+    return this.get<PlaylistMetadata | null>(
+      `/playlists/${params.playlistId}/metadata`
+    );
+  }
+
+  async upsertPlaylistMetadata(
+    params: UpsertPlaylistMetadataParams
+  ): Promise<PlaylistMetadata> {
+    return this.put<PlaylistMetadata>(
+      `/playlists/${params.playlistId}/metadata`,
+      params.data
+    );
+  }
+
+  async deletePlaylistMetadata(
+    params: DeletePlaylistMetadataParams
+  ): Promise<boolean> {
+    return this.delete<boolean>(`/playlists/${params.playlistId}/metadata`);
   }
 }
 

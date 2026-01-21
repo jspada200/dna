@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from dna.models.draft_note import DraftNote, DraftNoteUpdate
+    from dna.models.playlist_metadata import PlaylistMetadata, PlaylistMetadataUpdate
 
 
 class StorageProviderBase:
@@ -39,6 +40,22 @@ class StorageProviderBase:
         self, user_email: str, playlist_id: int, version_id: int
     ) -> bool:
         """Delete a draft note. Returns True if deleted."""
+        raise NotImplementedError()
+
+    async def get_playlist_metadata(
+        self, playlist_id: int
+    ) -> Optional["PlaylistMetadata"]:
+        """Get playlist metadata by playlist ID."""
+        raise NotImplementedError()
+
+    async def upsert_playlist_metadata(
+        self, playlist_id: int, data: "PlaylistMetadataUpdate"
+    ) -> "PlaylistMetadata":
+        """Create or update playlist metadata."""
+        raise NotImplementedError()
+
+    async def delete_playlist_metadata(self, playlist_id: int) -> bool:
+        """Delete playlist metadata. Returns True if deleted."""
         raise NotImplementedError()
 
 

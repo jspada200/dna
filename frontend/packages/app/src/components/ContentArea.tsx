@@ -4,6 +4,7 @@ import type { Version } from '@dna/core';
 import { VersionHeader } from './VersionHeader';
 import { NoteEditor, type NoteEditorHandle } from './NoteEditor';
 import { AssistantPanel } from './AssistantPanel';
+import { usePlaylistMetadata, useSetInReview } from '../hooks';
 
 interface ContentAreaProps {
   version?: Version | null;
@@ -82,8 +83,19 @@ export function ContentArea({
     : -1;
   const canGoBack = currentIndex > 0;
   const canGoNext = currentIndex >= 0 && currentIndex < versions.length - 1;
-  const inReviewVersion = versions.find((v) => v.status === IN_REVIEW_STATUS);
+
+  const { data: playlistMetadata } = usePlaylistMetadata(playlistId ?? null);
+  const { setInReview, isLoading: isSettingInReview } = useSetInReview(
+    playlistId ?? null
+  );
+
+  const inReviewVersionId = playlistMetadata?.in_review;
+  const inReviewVersion = inReviewVersionId
+    ? versions.find((v) => v.id === inReviewVersionId)
+    : versions.find((v) => v.status === IN_REVIEW_STATUS);
   const hasInReview = !!inReviewVersion;
+  const isCurrentVersionInReview =
+    version && inReviewVersionId ? version.id === inReviewVersionId : false;
 
   const handleBack = () => {
     if (canGoBack && onVersionSelect) {
@@ -100,6 +112,12 @@ export function ContentArea({
   const handleInReview = () => {
     if (inReviewVersion && onVersionSelect) {
       onVersionSelect(inReviewVersion);
+    }
+  };
+
+  const handleSetInReview = async () => {
+    if (version && playlistId) {
+      await setInReview(version.id);
     }
   };
 
@@ -146,9 +164,12 @@ export function ContentArea({
         onBack={handleBack}
         onNext={handleNext}
         onInReview={handleInReview}
+        onSetInReview={handleSetInReview}
         canGoBack={canGoBack}
         canGoNext={canGoNext}
         hasInReview={hasInReview}
+        isCurrentVersionInReview={isCurrentVersionInReview}
+        isSettingInReview={isSettingInReview}
         onRefresh={onRefresh}
       />
       <NoteEditor
