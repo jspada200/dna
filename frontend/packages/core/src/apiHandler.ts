@@ -11,12 +11,19 @@ import {
   GetPlaylistMetadataParams,
   UpsertPlaylistMetadataParams,
   DeletePlaylistMetadataParams,
+  DispatchBotParams,
+  StopBotParams,
+  GetBotStatusParams,
+  GetTranscriptParams,
   DraftNote,
   Playlist,
   PlaylistMetadata,
   Project,
   User as DNAUser,
   Version,
+  BotSession,
+  BotStatus,
+  Transcript,
 } from './interfaces';
 
 export interface User {
@@ -175,6 +182,28 @@ class ApiHandler {
     params: DeletePlaylistMetadataParams
   ): Promise<boolean> {
     return this.delete<boolean>(`/playlists/${params.playlistId}/metadata`);
+  }
+
+  async dispatchBot(params: DispatchBotParams): Promise<BotSession> {
+    return this.post<BotSession>('/transcription/bot', params.request);
+  }
+
+  async stopBot(params: StopBotParams): Promise<boolean> {
+    return this.delete<boolean>(
+      `/transcription/bot/${params.platform}/${encodeURIComponent(params.meetingId)}`
+    );
+  }
+
+  async getBotStatus(params: GetBotStatusParams): Promise<BotStatus> {
+    return this.get<BotStatus>(
+      `/transcription/bot/${params.platform}/${encodeURIComponent(params.meetingId)}/status`
+    );
+  }
+
+  async getTranscript(params: GetTranscriptParams): Promise<Transcript> {
+    return this.get<Transcript>(
+      `/transcription/transcript/${params.platform}/${encodeURIComponent(params.meetingId)}`
+    );
   }
 }
 

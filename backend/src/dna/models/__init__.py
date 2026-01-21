@@ -33,6 +33,15 @@ from dna.models.requests import (
     FilterCondition,
     FindRequest,
 )
+from dna.models.transcription import (
+    BotSession,
+    BotStatus,
+    BotStatusEnum,
+    DispatchBotRequest,
+    Platform,
+    Transcript,
+    TranscriptSegment,
+)
 
 __all__ = [
     "EntityBase",
@@ -57,4 +66,11 @@ __all__ = [
     "DraftNoteUpdate",
     "PlaylistMetadata",
     "PlaylistMetadataUpdate",
+    "BotSession",
+    "BotStatus",
+    "BotStatusEnum",
+    "DispatchBotRequest",
+    "Platform",
+    "Transcript",
+    "TranscriptSegment",
 ]

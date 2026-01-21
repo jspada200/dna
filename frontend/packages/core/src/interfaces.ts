@@ -218,3 +218,77 @@ export interface UpsertPlaylistMetadataParams {
 export interface DeletePlaylistMetadataParams {
   playlistId: number;
 }
+
+export type Platform = 'google_meet' | 'teams';
+
+export type BotStatusEnum =
+  | 'idle'
+  | 'joining'
+  | 'in_call'
+  | 'transcribing'
+  | 'failed'
+  | 'stopped'
+  | 'completed';
+
+export interface DispatchBotRequest {
+  platform: Platform;
+  meeting_id: string;
+  playlist_id: number;
+  passcode?: string;
+  bot_name?: string;
+  language?: string;
+}
+
+export interface BotStatus {
+  platform: Platform;
+  meeting_id: string;
+  status: BotStatusEnum;
+  message?: string;
+  updated_at: string;
+}
+
+export interface BotSession {
+  platform: Platform;
+  meeting_id: string;
+  playlist_id: number;
+  status: BotStatusEnum;
+  bot_name?: string;
+  language?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TranscriptSegment {
+  text: string;
+  speaker?: string;
+  start_time?: number;
+  end_time?: number;
+  timestamp: string;
+}
+
+export interface Transcript {
+  platform: Platform;
+  meeting_id: string;
+  segments: TranscriptSegment[];
+  language?: string;
+  duration?: number;
+}
+
+export interface DispatchBotParams {
+  request: DispatchBotRequest;
+}
+
+export interface StopBotParams {
+  platform: Platform;
+  meetingId: string;
+}
+
+export interface GetBotStatusParams {
+  platform: Platform;
+  meetingId: string;
+}
+
+export interface GetTranscriptParams {
+  platform: Platform;
+  meetingId: string;
+}

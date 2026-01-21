@@ -16,3 +16,10 @@ export {
   useUpsertPlaylistMetadata,
   useSetInReview,
 } from './usePlaylistMetadata';
+
+export { useTranscription, parseMeetingUrl } from './useTranscription';
+export type {
+  ParsedMeetingUrl,
+  UseTranscriptionOptions,
+  UseTranscriptionReturn,
+} from './useTranscription';

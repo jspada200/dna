@@ -8,17 +8,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from dna.models import (
     Asset,
+    BotSession,
+    BotStatus,
     CreateNoteRequest,
+    DispatchBotRequest,
     DraftNote,
     DraftNoteUpdate,
     FindRequest,
     Note,
+    Platform,
     Playlist,
     PlaylistMetadata,
     PlaylistMetadataUpdate,
     Project,
     Shot,
     Task,
+    Transcript,
     User,
     Version,
 )
@@ -30,6 +35,10 @@ from dna.prodtrack_providers.prodtrack_provider_base import (
 from dna.storage_providers.storage_provider_base import (
     StorageProviderBase,
     get_storage_provider,
+)
+from dna.transcription_providers.transcription_provider_base import (
+    TranscriptionProviderBase,
+    get_transcription_provider,
 )
 
 # API metadata for Swagger documentation
@@ -154,12 +163,22 @@ def get_storage_provider_cached() -> StorageProviderBase:
     return get_storage_provider()
 
 
+@lru_cache
+def get_transcription_provider_cached() -> TranscriptionProviderBase:
+    """Get or create the transcription provider singleton."""
+    return get_transcription_provider()
+
+
 ProdtrackProviderDep = Annotated[
     ProdtrackProviderBase, Depends(get_prodtrack_provider_cached)
 ]
 
 StorageProviderDep = Annotated[
     StorageProviderBase, Depends(get_storage_provider_cached)
+]
+
+TranscriptionProviderDep = Annotated[
+    TranscriptionProviderBase, Depends(get_transcription_provider_cached)
 ]
 
 
@@ -577,3 +596,99 @@ async def delete_playlist_metadata(
     if not deleted:
         raise HTTPException(status_code=404, detail="Playlist metadata not found")
     return True
+
+
+# -----------------------------------------------------------------------------
+# Transcription endpoints
+# -----------------------------------------------------------------------------
+
+
+@app.post(
+    "/transcription/bot",
+    tags=["Transcription"],
+    summary="Dispatch a bot to a meeting",
+    description="Start a transcription bot that joins the specified meeting.",
+    response_model=BotSession,
+    status_code=201,
+)
+async def dispatch_bot(
+    request: DispatchBotRequest,
+    transcription_provider: TranscriptionProviderDep,
+    storage_provider: StorageProviderDep,
+) -> BotSession:
+    """Dispatch a transcription bot to a meeting."""
+    try:
+        session = await transcription_provider.dispatch_bot(
+            platform=request.platform,
+            meeting_id=request.meeting_id,
+            playlist_id=request.playlist_id,
+            passcode=request.passcode,
+            bot_name=request.bot_name,
+            language=request.language,
+        )
+
+        await storage_provider.upsert_playlist_metadata(
+            request.playlist_id,
+            PlaylistMetadataUpdate(meeting_id=request.meeting_id),
+        )
+
+        return session
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete(
+    "/transcription/bot/{platform}/{meeting_id}",
+    tags=["Transcription"],
+    summary="Stop a transcription bot",
+    description="Stop a transcription bot that is currently in a meeting.",
+    response_model=bool,
+)
+async def stop_bot(
+    platform: Platform,
+    meeting_id: str,
+    transcription_provider: TranscriptionProviderDep,
+) -> bool:
+    """Stop a transcription bot."""
+    try:
+        return await transcription_provider.stop_bot(platform, meeting_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get(
+    "/transcription/bot/{platform}/{meeting_id}/status",
+    tags=["Transcription"],
+    summary="Get bot status",
+    description="Get the current status of a transcription bot.",
+    response_model=BotStatus,
+)
+async def get_bot_status(
+    platform: Platform,
+    meeting_id: str,
+    transcription_provider: TranscriptionProviderDep,
+) -> BotStatus:
+    """Get the status of a transcription bot."""
+    try:
+        return await transcription_provider.get_bot_status(platform, meeting_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get(
+    "/transcription/transcript/{platform}/{meeting_id}",
+    tags=["Transcription"],
+    summary="Get transcript",
+    description="Get the full transcript for a meeting.",
+    response_model=Transcript,
+)
+async def get_transcript(
+    platform: Platform,
+    meeting_id: str,
+    transcription_provider: TranscriptionProviderDep,
+) -> Transcript:
+    """Get the transcript for a meeting."""
+    try:
+        return await transcription_provider.get_transcript(platform, meeting_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

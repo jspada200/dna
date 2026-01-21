@@ -5,7 +5,6 @@ import {
   PanelLeft,
   Settings,
   Phone,
-  Play,
   Upload,
   Loader2,
   AlertCircle,
@@ -18,6 +17,7 @@ import { SplitButton } from './SplitButton';
 import { ExpandableSearch } from './ExpandableSearch';
 import { SquareButton } from './SquareButton';
 import { VersionCard } from './VersionCard';
+import { TranscriptionMenu } from './TranscriptionMenu';
 import { useGetVersionsForPlaylist, useGetUserByEmail } from '../api';
 import { usePlaylistMetadata } from '../hooks';
 
@@ -418,19 +418,17 @@ export function Sidebar({
             Publish
           </SquareButton>
           <SquareButton variant="neutral">
+            <Phone />
+            Call
+          </SquareButton>
+          <SquareButton variant="neutral">
             <Settings />
             Settings
           </SquareButton>
         </CollapsedFooter>
       ) : (
         <Footer $collapsed={collapsed}>
-          <SplitButton
-            leftSlot={<Phone size={14} />}
-            rightSlot={<Play size={14} />}
-            onRightClick={() => {}}
-          >
-            Transcribing
-          </SplitButton>
+          <TranscriptionMenu playlistId={playlistId} />
           <SettingsButton>
             <Settings size={16} />
             Settings

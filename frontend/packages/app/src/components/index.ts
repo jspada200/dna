@@ -21,3 +21,4 @@ export {
   StyledSelectTrigger,
   StyledSelectContent,
 } from './FormInputs';
+export { TranscriptionMenu } from './TranscriptionMenu';
