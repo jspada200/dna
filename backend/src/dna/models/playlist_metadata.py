@@ -15,6 +15,10 @@ class PlaylistMetadataUpdate(BaseModel):
         default=None, description="Version ID currently in review"
     )
     meeting_id: Optional[str] = Field(default=None, description="Associated meeting ID")
+    platform: Optional[str] = Field(default=None, description="Meeting platform")
+    vexa_meeting_id: Optional[int] = Field(
+        default=None, description="Internal Vexa meeting ID"
+    )
 
 
 class PlaylistMetadata(BaseModel):
@@ -26,3 +30,5 @@ class PlaylistMetadata(BaseModel):
     playlist_id: int
     in_review: Optional[int] = None
     meeting_id: Optional[str] = None
+    platform: Optional[str] = None
+    vexa_meeting_id: Optional[int] = None

@@ -61,6 +61,7 @@ class BotSession(BaseModel):
     meeting_id: str
     playlist_id: int
     status: BotStatusEnum
+    vexa_meeting_id: Optional[int] = None
     bot_name: Optional[str] = None
     language: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

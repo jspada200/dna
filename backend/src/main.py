@@ -640,7 +640,11 @@ async def dispatch_bot(
 
         await storage_provider.upsert_playlist_metadata(
             request.playlist_id,
-            PlaylistMetadataUpdate(meeting_id=request.meeting_id),
+            PlaylistMetadataUpdate(
+                meeting_id=request.meeting_id,
+                platform=request.platform.value,
+                vexa_meeting_id=session.vexa_meeting_id,
+            ),
         )
 
         await event_publisher.publish(
@@ -649,7 +653,6 @@ async def dispatch_bot(
                 "playlist_id": request.playlist_id,
                 "meeting_id": request.meeting_id,
                 "platform": request.platform.value,
-                "bot_session_id": session.session_id,
             },
         )
 
