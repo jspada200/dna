@@ -107,11 +107,8 @@ const TriggerButton = styled.button<{ $isActive: boolean; $phoneStatus: PhoneSta
   font-family: ${({ theme }) => theme.fonts.sans};
   color: ${({ theme, $isActive }) =>
     $isActive ? theme.colors.text.primary : theme.colors.text.secondary};
-  background: ${({ theme, $isActive }) =>
-    $isActive ? theme.colors.accent.subtle : 'transparent'};
-  border: 1px solid
-    ${({ theme, $isActive }) =>
-      $isActive ? theme.colors.accent.main : theme.colors.border.default};
+  background: transparent;
+  border: 1px solid ${({ theme }) => theme.colors.border.default};
   border-radius: ${({ theme }) => theme.radii.md};
   cursor: pointer;
   transition: all ${({ theme }) => theme.transitions.fast};
