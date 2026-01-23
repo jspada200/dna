@@ -8,3 +8,4 @@ pytest-asyncio==0.21.1
 httpx==0.25.2
 shotgun_api3==3.9.2
 pymongo==4.10.1
+aio-pika==9.4.0

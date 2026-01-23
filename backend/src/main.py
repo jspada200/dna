@@ -6,6 +6,7 @@ from typing import Annotated, Optional, cast
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from dna.events import EventPublisher, EventType, get_event_publisher
 from dna.models import (
     Asset,
     BotSession,
@@ -180,6 +181,15 @@ StorageProviderDep = Annotated[
 TranscriptionProviderDep = Annotated[
     TranscriptionProviderBase, Depends(get_transcription_provider_cached)
 ]
+
+
+@lru_cache
+def get_event_publisher_cached() -> EventPublisher:
+    """Get or create the event publisher singleton."""
+    return get_event_publisher()
+
+
+EventPublisherDep = Annotated[EventPublisher, Depends(get_event_publisher_cached)]
 
 
 # -----------------------------------------------------------------------------
@@ -615,6 +625,7 @@ async def dispatch_bot(
     request: DispatchBotRequest,
     transcription_provider: TranscriptionProviderDep,
     storage_provider: StorageProviderDep,
+    event_publisher: EventPublisherDep,
 ) -> BotSession:
     """Dispatch a transcription bot to a meeting."""
     try:
@@ -630,6 +641,16 @@ async def dispatch_bot(
         await storage_provider.upsert_playlist_metadata(
             request.playlist_id,
             PlaylistMetadataUpdate(meeting_id=request.meeting_id),
+        )
+
+        await event_publisher.publish(
+            EventType.TRANSCRIPTION_SUBSCRIBE,
+            {
+                "playlist_id": request.playlist_id,
+                "meeting_id": request.meeting_id,
+                "platform": request.platform.value,
+                "bot_session_id": session.session_id,
+            },
         )
 
         return session

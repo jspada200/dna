@@ -16,6 +16,26 @@ services:
       retries: 3
       start_period: 40s
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: dna-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=dna
+      - RABBITMQ_DEFAULT_PASS=dna
+      - RABBITMQ_DEFAULT_VHOST=dna
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   api:
     build:
       context: .
@@ -37,8 +57,10 @@ services:
       - PRODTRACK_PROVIDER=shotgrid
       - MONGODB_URL=mongodb://mongo:27017
       - STORAGE_PROVIDER=mongodb
+      - RABBITMQ_URL=amqp://dna:dna@rabbitmq:5672/dna
     depends_on:
       - mongo
+      - rabbitmq
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -47,5 +69,23 @@ services:
       retries: 3
       start_period: 40s
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dna-worker
+    command: python src/worker.py
+    volumes:
+      - ./src:/app/src
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MONGODB_URL=mongodb://mongo:27017
+      - RABBITMQ_URL=amqp://dna:dna@rabbitmq:5672/dna
+    depends_on:
+      - mongo
+      - rabbitmq
+    restart: unless-stopped
+
 volumes:
   mongo_data:
+  rabbitmq_data:
