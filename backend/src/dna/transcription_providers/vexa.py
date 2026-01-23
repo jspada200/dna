@@ -266,9 +266,9 @@ class VexaTranscriptionProvider(TranscriptionProviderBase):
                 )
                 return
 
-            callback = self._subscribed_meetings.get(meeting_key)
-            if callback is None:
-                return
+        callback = self._subscribed_meetings.get(meeting_key)
+        if callback is None:
+            return
 
             platform, native_id = meeting_key.split(":", 1)
             await callback(
