@@ -23,3 +23,14 @@ export type {
   UseTranscriptionOptions,
   UseTranscriptionReturn,
 } from './useTranscription';
+
+export {
+  useEventSubscription,
+  useMultipleEventSubscriptions,
+  useConnectionStatus,
+  useSegmentEvents,
+} from './useDNAEvents';
+export type { SegmentEvent } from './useDNAEvents';
+
+export { useSegments } from './useSegments';
+export type { UseSegmentsOptions, UseSegmentsResult } from './useSegments';

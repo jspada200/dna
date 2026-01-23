@@ -23,6 +23,7 @@ from dna.models import (
     PlaylistMetadataUpdate,
     Project,
     Shot,
+    StoredSegment,
     Task,
     Transcript,
     User,
@@ -714,5 +715,24 @@ async def get_transcript(
     """Get the transcript for a meeting."""
     try:
         return await transcription_provider.get_transcript(platform, meeting_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get(
+    "/transcription/segments/{playlist_id}/{version_id}",
+    tags=["Transcription"],
+    summary="Get segments for a version",
+    description="Get all stored transcript segments for a specific playlist version.",
+    response_model=list[StoredSegment],
+)
+async def get_segments_for_version(
+    playlist_id: int,
+    version_id: int,
+    storage_provider: StorageProviderDep,
+) -> list[StoredSegment]:
+    """Get all transcript segments for a version."""
+    try:
+        return await storage_provider.get_segments_for_version(playlist_id, version_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

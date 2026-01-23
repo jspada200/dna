@@ -199,11 +199,13 @@ export interface PlaylistMetadata {
   playlist_id: number;
   in_review: number | null;
   meeting_id: string | null;
+  platform: Platform | null;
 }
 
 export interface PlaylistMetadataUpdate {
   in_review?: number | null;
   meeting_id?: string | null;
+  platform?: Platform | null;
 }
 
 export interface GetPlaylistMetadataParams {
@@ -224,6 +226,7 @@ export type Platform = 'google_meet' | 'teams';
 export type BotStatusEnum =
   | 'idle'
   | 'joining'
+  | 'waiting_room'
   | 'in_call'
   | 'transcribing'
   | 'failed'
@@ -291,4 +294,24 @@ export interface GetBotStatusParams {
 export interface GetTranscriptParams {
   platform: Platform;
   meetingId: string;
+}
+
+export interface StoredSegment {
+  id: string;
+  segment_id: string;
+  playlist_id: number;
+  version_id: number;
+  text: string;
+  speaker?: string;
+  language?: string;
+  absolute_start_time: string;
+  absolute_end_time: string;
+  vexa_updated_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GetSegmentsParams {
+  playlistId: number;
+  versionId: number;
 }

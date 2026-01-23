@@ -22,8 +22,10 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+      - "15674:15674"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq_enabled_plugins:/etc/rabbitmq/enabled_plugins
     environment:
       - RABBITMQ_DEFAULT_USER=dna
       - RABBITMQ_DEFAULT_PASS=dna

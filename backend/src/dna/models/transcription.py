@@ -22,6 +22,7 @@ class BotStatusEnum(str, Enum):
 
     IDLE = "idle"
     JOINING = "joining"
+    WAITING_ROOM = "waiting_room"
     IN_CALL = "in_call"
     TRANSCRIBING = "transcribing"
     FAILED = "failed"

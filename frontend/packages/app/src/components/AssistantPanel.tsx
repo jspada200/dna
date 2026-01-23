@@ -2,6 +2,7 @@ import styled from 'styled-components';
 import * as Tabs from '@radix-ui/react-tabs';
 import { AssistantNote } from './AssistantNote';
 import { OtherNotesPanel } from './OtherNotesPanel';
+import { TranscriptPanel } from './TranscriptPanel';
 
 interface AssistantPanelProps {
   activeTab?: string;
@@ -54,13 +55,6 @@ const StyledTabsContent = styled(Tabs.Content)`
   padding: 16px 0;
 `;
 
-const EmptyContent = styled.div`
-  padding: 24px;
-  text-align: center;
-  font-size: 14px;
-  color: ${({ theme }) => theme.colors.text.muted};
-`;
-
 export function AssistantPanel({
   activeTab = 'assistant',
   playlistId,
@@ -84,7 +78,10 @@ export function AssistantPanel({
         </StyledTabsContent>
 
         <StyledTabsContent value="transcript">
-          <EmptyContent>Transcript content will appear here</EmptyContent>
+          <TranscriptPanel
+            playlistId={playlistId ?? null}
+            versionId={versionId ?? null}
+          />
         </StyledTabsContent>
 
         <StyledTabsContent value="other">

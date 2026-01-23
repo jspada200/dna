@@ -14,6 +14,7 @@ import { useTranscription, parseMeetingUrl } from '../hooks';
 
 interface TranscriptionMenuProps {
   playlistId: number | null;
+  collapsed?: boolean;
 }
 
 const pulse = keyframes`
@@ -44,6 +45,7 @@ const StatusIndicator = styled.div<{ $status: BotStatusEnum }>`
   background: ${({ theme, $status }) => {
     switch ($status) {
       case 'joining':
+      case 'waiting_room':
         return theme.colors.status.warning;
       case 'in_call':
       case 'transcribing':
@@ -58,7 +60,7 @@ const StatusIndicator = styled.div<{ $status: BotStatusEnum }>`
     }
   }};
   animation: ${({ $status }) =>
-    $status === 'joining' || $status === 'transcribing'
+    $status === 'joining' || $status === 'transcribing' || $status === 'waiting_room'
       ? pulse
       : 'none'} 1.5s ease-in-out infinite;
 `;
@@ -92,7 +94,9 @@ const ButtonRow = styled.div`
   gap: 8px;
 `;
 
-const TriggerButton = styled.button<{ $isActive: boolean }>`
+type PhoneStatus = 'disconnected' | 'connecting' | 'connected';
+
+const TriggerButton = styled.button<{ $isActive: boolean; $phoneStatus: PhoneStatus }>`
   display: flex;
   align-items: center;
   gap: 8px;
@@ -116,6 +120,20 @@ const TriggerButton = styled.button<{ $isActive: boolean }>`
     background: ${({ theme }) => theme.colors.bg.surfaceHover};
     border-color: ${({ theme }) => theme.colors.border.strong};
   }
+
+  svg.phone-icon {
+    color: ${({ theme, $phoneStatus }) => {
+      switch ($phoneStatus) {
+        case 'connected':
+          return theme.colors.status.success;
+        case 'connecting':
+          return theme.colors.status.warning;
+        case 'disconnected':
+        default:
+          return theme.colors.status.error;
+      }
+    }};
+  }
 `;
 
 const LiveIndicator = styled.span`
@@ -137,14 +155,55 @@ const SpinnerIcon = styled(Loader2)`
   }
 `;
 
+const CollapsedTriggerButton = styled.button<{ $phoneStatus: PhoneStatus }>`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 48px;
+  height: 48px;
+  padding: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: ${({ theme }) => theme.fonts.sans};
+  color: ${({ theme }) => theme.colors.text.secondary};
+  background: transparent;
+  border: 1px solid ${({ theme }) => theme.colors.border.default};
+  border-radius: ${({ theme }) => theme.radii.md};
+  cursor: pointer;
+  transition: all ${({ theme }) => theme.transitions.fast};
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.bg.surfaceHover};
+    border-color: ${({ theme }) => theme.colors.border.strong};
+  }
+
+  svg.phone-icon {
+    color: ${({ theme, $phoneStatus }) => {
+      switch ($phoneStatus) {
+        case 'connected':
+          return theme.colors.status.success;
+        case 'connecting':
+          return theme.colors.status.warning;
+        case 'disconnected':
+        default:
+          return theme.colors.status.error;
+      }
+    }};
+  }
+`;
+
 function getStatusLabel(status: BotStatusEnum): string {
   switch (status) {
     case 'idle':
       return 'Ready';
     case 'joining':
-      return 'Joining meeting...';
+      return 'Joining...';
+    case 'waiting_room':
+      return 'Awaiting Admission';
     case 'in_call':
-      return 'Connected';
+      return 'In Call';
     case 'transcribing':
       return 'Transcribing';
     case 'failed':
@@ -158,9 +217,41 @@ function getStatusLabel(status: BotStatusEnum): string {
   }
 }
 
+function getButtonStatusLabel(status: BotStatusEnum): string {
+  switch (status) {
+    case 'joining':
+      return 'Joining...';
+    case 'waiting_room':
+      return 'Waiting';
+    case 'in_call':
+    case 'transcribing':
+      return 'Live';
+    default:
+      return '';
+  }
+}
+
+function getPhoneStatus(status: BotStatusEnum): PhoneStatus {
+  switch (status) {
+    case 'in_call':
+    case 'transcribing':
+      return 'connected';
+    case 'joining':
+    case 'waiting_room':
+      return 'connecting';
+    case 'idle':
+    case 'failed':
+    case 'stopped':
+    case 'completed':
+    default:
+      return 'disconnected';
+  }
+}
+
 function getStatusIcon(status: BotStatusEnum) {
   switch (status) {
     case 'joining':
+    case 'waiting_room':
       return <SpinnerIcon size={14} />;
     case 'in_call':
     case 'transcribing':
@@ -174,7 +265,21 @@ function getStatusIcon(status: BotStatusEnum) {
   }
 }
 
-export function TranscriptionMenu({ playlistId }: TranscriptionMenuProps) {
+function getCollapsedLabel(status: BotStatusEnum): string {
+  switch (status) {
+    case 'joining':
+      return 'Joining';
+    case 'waiting_room':
+      return 'Waiting';
+    case 'in_call':
+    case 'transcribing':
+      return 'Live';
+    default:
+      return 'Call';
+  }
+}
+
+export function TranscriptionMenu({ playlistId, collapsed = false }: TranscriptionMenuProps) {
   const [meetingUrl, setMeetingUrl] = useState('');
   const [passcode, setPasscode] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -191,7 +296,8 @@ export function TranscriptionMenu({ playlistId }: TranscriptionMenuProps) {
   } = useTranscription({ playlistId });
 
   const currentStatus = status?.status ?? session?.status ?? 'idle';
-  const isActive = ['joining', 'in_call', 'transcribing'].includes(currentStatus);
+  const isActive = ['joining', 'waiting_room', 'in_call', 'transcribing'].includes(currentStatus);
+  const phoneStatus = getPhoneStatus(currentStatus);
   const needsPasscode = parseMeetingUrl(meetingUrl)?.platform === 'teams';
 
   const handleDispatch = useCallback(async () => {
@@ -223,20 +329,35 @@ export function TranscriptionMenu({ playlistId }: TranscriptionMenuProps) {
     }
   };
 
+  const renderTrigger = () => {
+    if (collapsed) {
+      return (
+        <CollapsedTriggerButton $phoneStatus={phoneStatus}>
+          <Phone size={18} className="phone-icon" />
+          {getCollapsedLabel(currentStatus)}
+        </CollapsedTriggerButton>
+      );
+    }
+
+    return (
+      <TriggerButton $isActive={isActive} $phoneStatus={phoneStatus}>
+        <Phone size={14} className="phone-icon" />
+        {isActive ? (
+          <>
+            <StatusIndicator $status={currentStatus} />
+            {getButtonStatusLabel(currentStatus)}
+          </>
+        ) : (
+          'Transcription'
+        )}
+      </TriggerButton>
+    );
+  };
+
   return (
     <Popover.Root open={isOpen} onOpenChange={handleOpenChange}>
       <Popover.Trigger>
-        <TriggerButton $isActive={isActive}>
-          {isActive ? <PhoneOff size={14} /> : <Phone size={14} />}
-          {isActive ? (
-            <LiveIndicator>
-              <StatusIndicator $status={currentStatus} />
-              Live
-            </LiveIndicator>
-          ) : (
-            'Transcription'
-          )}
-        </TriggerButton>
+        {renderTrigger()}
       </Popover.Trigger>
       <Popover.Content side="top" align="start" sideOffset={8}>
         <MenuContainer>

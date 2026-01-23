@@ -374,6 +374,35 @@ class EventWorker:
     async def on_transcription_completed(self, payload: dict[str, Any]) -> None:
         logger.info("Transcription completed: %s", payload)
 
+        platform = payload.get("platform")
+        meeting_id = payload.get("meeting_id")
+
+        if platform and meeting_id:
+            meeting_key = f"{platform}:{meeting_id}"
+
+            if meeting_key in self._subscribed_meetings:
+                self._subscribed_meetings.discard(meeting_key)
+                logger.info(
+                    "Removed subscription for completed meeting: %s", meeting_key
+                )
+
+            if meeting_key in self._meeting_to_playlist:
+                del self._meeting_to_playlist[meeting_key]
+                logger.info(
+                    "Removed playlist mapping for completed meeting: %s", meeting_key
+                )
+
+            if self.transcription_provider:
+                try:
+                    await self.transcription_provider.unsubscribe_from_meeting(
+                        platform=platform, meeting_id=meeting_id
+                    )
+                    logger.info(
+                        "Unsubscribed from Vexa for completed meeting: %s", meeting_key
+                    )
+                except Exception as e:
+                    logger.warning("Failed to unsubscribe from Vexa: %s", e)
+
     async def on_transcription_error(self, payload: dict[str, Any]) -> None:
         logger.error("Transcription error: %s", payload)
 

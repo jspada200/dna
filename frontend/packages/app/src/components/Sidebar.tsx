@@ -4,11 +4,9 @@ import {
   PanelLeftClose,
   PanelLeft,
   Settings,
-  Phone,
   Upload,
   Loader2,
   AlertCircle,
-  Play,
 } from 'lucide-react';
 import { Button } from '@radix-ui/themes';
 import type { Version } from '@dna/core';
@@ -379,11 +377,7 @@ export function Sidebar({
 
       {collapsed ? (
         <CollapsedToolbar>
-          <SplitButton
-            leftSlot={<Phone size={14} />}
-            rightSlot={<Play size={14} />}
-            onRightClick={() => {}}
-          />
+          <TranscriptionMenu playlistId={playlistId} collapsed />
         </CollapsedToolbar>
       ) : (
         <Toolbar>
@@ -417,10 +411,6 @@ export function Sidebar({
           <SquareButton variant="cta">
             <Upload />
             Publish
-          </SquareButton>
-          <SquareButton variant="neutral">
-            <Phone />
-            Call
           </SquareButton>
           <SquareButton variant="neutral">
             <Settings />

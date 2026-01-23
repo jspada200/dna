@@ -112,37 +112,66 @@ class VexaTranscriptionProvider(TranscriptionProviderBase):
         return response.status_code == 200
 
     async def get_bot_status(self, platform: Platform, meeting_id: str) -> BotStatus:
-        """Get the current status of a bot."""
+        """Get the current status of a bot by querying meetings endpoint."""
         try:
-            response = await self.client.get(
-                f"/bots/{platform.value}/{meeting_id}/status"
-            )
+            response = await self.client.get("/meetings")
             response.raise_for_status()
             data = response.json()
+            meetings = data.get("meetings", [])
 
             status_map = {
-                "idle": BotStatusEnum.IDLE,
+                "requested": BotStatusEnum.JOINING,
                 "joining": BotStatusEnum.JOINING,
+                "awaiting_admission": BotStatusEnum.WAITING_ROOM,
+                "active": BotStatusEnum.IN_CALL,
                 "in_call": BotStatusEnum.IN_CALL,
                 "transcribing": BotStatusEnum.TRANSCRIBING,
+                "recording": BotStatusEnum.TRANSCRIBING,
                 "failed": BotStatusEnum.FAILED,
                 "stopped": BotStatusEnum.STOPPED,
                 "completed": BotStatusEnum.COMPLETED,
+                "ended": BotStatusEnum.COMPLETED,
             }
 
-            return BotStatus(
-                platform=platform,
-                meeting_id=meeting_id,
-                status=status_map.get(data.get("status", "idle"), BotStatusEnum.IDLE),
-                message=data.get("message"),
-                updated_at=datetime.utcnow(),
-            )
-        except httpx.HTTPStatusError:
+            for meeting in meetings:
+                meeting_platform = meeting.get("platform", "")
+                native_meeting_id = meeting.get("native_meeting_id", "")
+                if (
+                    meeting_platform == platform.value
+                    and native_meeting_id == meeting_id
+                ):
+                    meeting_status = meeting.get("status", "").lower()
+                    return BotStatus(
+                        platform=platform,
+                        meeting_id=meeting_id,
+                        status=status_map.get(meeting_status, BotStatusEnum.IDLE),
+                        message=meeting_status,
+                        updated_at=datetime.utcnow(),
+                    )
+
             return BotStatus(
                 platform=platform,
                 meeting_id=meeting_id,
                 status=BotStatusEnum.IDLE,
-                message="Bot not found",
+                message="Meeting not found",
+                updated_at=datetime.utcnow(),
+            )
+        except httpx.HTTPStatusError as e:
+            logger.error("Failed to get bot status: %s", e)
+            return BotStatus(
+                platform=platform,
+                meeting_id=meeting_id,
+                status=BotStatusEnum.IDLE,
+                message="Failed to get status",
+                updated_at=datetime.utcnow(),
+            )
+        except Exception as e:
+            logger.exception("Error getting bot status: %s", e)
+            return BotStatus(
+                platform=platform,
+                meeting_id=meeting_id,
+                status=BotStatusEnum.IDLE,
+                message=str(e),
                 updated_at=datetime.utcnow(),
             )
 
@@ -266,9 +295,9 @@ class VexaTranscriptionProvider(TranscriptionProviderBase):
                 )
                 return
 
-        callback = self._subscribed_meetings.get(meeting_key)
-        if callback is None:
-            return
+            callback = self._subscribed_meetings.get(meeting_key)
+            if callback is None:
+                return
 
             platform, native_id = meeting_key.split(":", 1)
             await callback(
@@ -280,7 +309,9 @@ class VexaTranscriptionProvider(TranscriptionProviderBase):
                     "payload": data.get("payload", {}),
                 },
             )
-        elif msg_type == "meeting.status":
+            return
+
+        if msg_type == "meeting.status":
             platform = meeting_info.get("platform", "")
             native_id = meeting_info.get("native_id", "")
             internal_id = meeting_info.get("id")

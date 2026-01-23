@@ -15,6 +15,7 @@ import {
   StopBotParams,
   GetBotStatusParams,
   GetTranscriptParams,
+  GetSegmentsParams,
   DraftNote,
   Playlist,
   PlaylistMetadata,
@@ -24,6 +25,7 @@ import {
   BotSession,
   BotStatus,
   Transcript,
+  StoredSegment,
 } from './interfaces';
 
 export interface User {
@@ -203,6 +205,14 @@ class ApiHandler {
   async getTranscript(params: GetTranscriptParams): Promise<Transcript> {
     return this.get<Transcript>(
       `/transcription/transcript/${params.platform}/${encodeURIComponent(params.meetingId)}`
+    );
+  }
+
+  async getSegmentsForVersion(
+    params: GetSegmentsParams
+  ): Promise<StoredSegment[]> {
+    return this.get<StoredSegment[]>(
+      `/transcription/segments/${params.playlistId}/${params.versionId}`
     );
   }
 }
