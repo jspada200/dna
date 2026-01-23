@@ -82,8 +82,10 @@ services:
       - MONGODB_URL=mongodb://mongo:27017
       - RABBITMQ_URL=amqp://dna:dna@rabbitmq:5672/dna
     depends_on:
-      - mongo
-      - rabbitmq
+      mongo:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
