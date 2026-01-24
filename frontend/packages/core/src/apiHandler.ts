@@ -16,6 +16,9 @@ import {
   GetBotStatusParams,
   GetTranscriptParams,
   GetSegmentsParams,
+  GetUserSettingsParams,
+  UpsertUserSettingsParams,
+  DeleteUserSettingsParams,
   DraftNote,
   Playlist,
   PlaylistMetadata,
@@ -26,6 +29,7 @@ import {
   BotStatus,
   Transcript,
   StoredSegment,
+  UserSettings,
 } from './interfaces';
 
 export interface User {
@@ -213,6 +217,29 @@ class ApiHandler {
   ): Promise<StoredSegment[]> {
     return this.get<StoredSegment[]>(
       `/transcription/segments/${params.playlistId}/${params.versionId}`
+    );
+  }
+
+  async getUserSettings(
+    params: GetUserSettingsParams
+  ): Promise<UserSettings | null> {
+    return this.get<UserSettings | null>(
+      `/users/${encodeURIComponent(params.userEmail)}/settings`
+    );
+  }
+
+  async upsertUserSettings(
+    params: UpsertUserSettingsParams
+  ): Promise<UserSettings> {
+    return this.put<UserSettings>(
+      `/users/${encodeURIComponent(params.userEmail)}/settings`,
+      params.data
+    );
+  }
+
+  async deleteUserSettings(params: DeleteUserSettingsParams): Promise<boolean> {
+    return this.delete<boolean>(
+      `/users/${encodeURIComponent(params.userEmail)}/settings`
     );
   }
 }

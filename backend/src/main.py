@@ -27,6 +27,8 @@ from dna.models import (
     Task,
     Transcript,
     User,
+    UserSettings,
+    UserSettingsUpdate,
     Version,
 )
 from dna.models.entity import ENTITY_MODELS, EntityBase
@@ -121,6 +123,10 @@ tags_metadata = [
     {
         "name": "Playlist Metadata",
         "description": "Operations for managing playlist metadata (in-review version and meeting ID)",
+    },
+    {
+        "name": "User Settings",
+        "description": "Operations for managing user settings and preferences",
     },
 ]
 
@@ -606,6 +612,60 @@ async def delete_playlist_metadata(
     deleted = await provider.delete_playlist_metadata(playlist_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Playlist metadata not found")
+    return True
+
+
+# -----------------------------------------------------------------------------
+# User Settings endpoints
+# -----------------------------------------------------------------------------
+
+
+@app.get(
+    "/users/{user_email}/settings",
+    tags=["User Settings"],
+    summary="Get user settings",
+    description="Retrieve settings for a user by their email address.",
+    response_model=Optional[UserSettings],
+)
+async def get_user_settings(
+    user_email: str,
+    provider: StorageProviderDep,
+) -> Optional[UserSettings]:
+    """Get user settings."""
+    return await provider.get_user_settings(user_email)
+
+
+@app.put(
+    "/users/{user_email}/settings",
+    tags=["User Settings"],
+    summary="Create or update user settings",
+    description="Create or update settings for a user.",
+    response_model=UserSettings,
+)
+async def upsert_user_settings(
+    user_email: str,
+    data: UserSettingsUpdate,
+    provider: StorageProviderDep,
+) -> UserSettings:
+    """Create or update user settings."""
+    return await provider.upsert_user_settings(user_email, data)
+
+
+@app.delete(
+    "/users/{user_email}/settings",
+    tags=["User Settings"],
+    summary="Delete user settings",
+    description="Delete settings for a user.",
+    response_model=bool,
+)
+async def delete_user_settings(
+    user_email: str,
+    provider: StorageProviderDep,
+) -> bool:
+    """Delete user settings."""
+    deleted = await provider.delete_user_settings(user_email)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="User settings not found")
     return True
 
 

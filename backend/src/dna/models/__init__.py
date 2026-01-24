@@ -47,6 +47,10 @@ from dna.models.transcription import (
     Transcript,
     TranscriptSegment,
 )
+from dna.models.user_settings import (
+    UserSettings,
+    UserSettingsUpdate,
+)
 
 __all__ = [
     "EntityBase",
@@ -81,4 +85,6 @@ __all__ = [
     "Platform",
     "Transcript",
     "TranscriptSegment",
+    "UserSettings",
+    "UserSettingsUpdate",
 ]
