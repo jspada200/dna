@@ -88,7 +88,7 @@ class MongoDBStorageProvider(StorageProviderBase):
         query = self._build_query(user_email, playlist_id, version_id)
 
         update: dict[str, Any] = {
-            "$set": {**data.model_dump(), "updated_at": now},
+            "$set": {**data.model_dump(exclude_none=True), "updated_at": now},
             "$setOnInsert": {
                 "created_at": now,
                 "user_email": user_email,
