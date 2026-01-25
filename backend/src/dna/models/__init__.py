@@ -53,20 +53,6 @@ from dna.models.user_settings import (
     UserSettings,
     UserSettingsUpdate,
 )
-from dna.models.stored_segment import (
-    StoredSegment,
-    StoredSegmentCreate,
-    generate_segment_id,
-)
-from dna.models.transcription import (
-    BotSession,
-    BotStatus,
-    BotStatusEnum,
-    DispatchBotRequest,
-    Platform,
-    Transcript,
-    TranscriptSegment,
-)
 
 __all__ = [
     "EntityBase",
