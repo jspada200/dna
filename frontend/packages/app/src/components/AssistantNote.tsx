@@ -155,6 +155,18 @@ const NoteContent = styled.div`
     color: ${({ theme }) => theme.colors.accent.main};
     text-decoration: underline;
   }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const EmptyState = styled.div`
+  padding: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: ${({ theme }) => theme.colors.text.muted};
 `;
 
 const ActionBar = styled.div`
