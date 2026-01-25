@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+import os
 from functools import lru_cache
 from typing import Annotated, Optional, cast
 
@@ -7,6 +8,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from dna.events import EventPublisher, EventType, get_event_publisher
+from dna.llm_providers.default_prompt import DEFAULT_PROMPT
+from dna.llm_providers.llm_provider_base import LLMProviderBase, get_llm_provider
 from dna.models import (
     Asset,
     BotSession,
@@ -16,6 +19,8 @@ from dna.models import (
     DraftNote,
     DraftNoteUpdate,
     FindRequest,
+    GenerateNoteRequest,
+    GenerateNoteResponse,
     Note,
     Platform,
     Playlist,
@@ -177,6 +182,12 @@ def get_transcription_provider_cached() -> TranscriptionProviderBase:
     return get_transcription_provider()
 
 
+@lru_cache
+def get_llm_provider_cached() -> LLMProviderBase:
+    """Get or create the LLM provider singleton."""
+    return get_llm_provider()
+
+
 ProdtrackProviderDep = Annotated[
     ProdtrackProviderBase, Depends(get_prodtrack_provider_cached)
 ]
@@ -188,6 +199,8 @@ StorageProviderDep = Annotated[
 TranscriptionProviderDep = Annotated[
     TranscriptionProviderBase, Depends(get_transcription_provider_cached)
 ]
+
+LLMProviderDep = Annotated[LLMProviderBase, Depends(get_llm_provider_cached)]
 
 
 @lru_cache
@@ -794,5 +807,113 @@ async def get_segments_for_version(
     """Get all transcript segments for a version."""
     try:
         return await storage_provider.get_segments_for_version(playlist_id, version_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# -----------------------------------------------------------------------------
+# LLM endpoints
+# -----------------------------------------------------------------------------
+
+
+def _build_version_context(version: Version) -> str:
+    """Build a context string from version metadata."""
+    parts = []
+    if version.name:
+        parts.append(f"Version: {version.name}")
+    if version.entity:
+        entity_type = version.entity.__class__.__name__
+        parts.append(f"{entity_type}: {version.entity.name}")
+    if version.task:
+        if version.task.name:
+            parts.append(f"Task: {version.task.name}")
+        if version.task.pipeline_step and version.task.pipeline_step.get("name"):
+            parts.append(f"Department: {version.task.pipeline_step['name']}")
+    if version.status:
+        parts.append(f"Status: {version.status}")
+    if version.description:
+        parts.append(f"Description: {version.description}")
+    return "\n".join(parts) if parts else "No version context available."
+
+
+def _build_transcript_text(segments: list[StoredSegment]) -> str:
+    """Build a transcript string from segments."""
+    if not segments:
+        return "No transcript available."
+    lines = []
+    for segment in segments:
+        speaker = segment.speaker or "Unknown"
+        lines.append(f"{speaker}: {segment.text}")
+    return "\n".join(lines)
+
+
+def _build_full_prompt(
+    prompt: str, transcript: str, context: str, existing_notes: str
+) -> str:
+    """Build the full prompt with template values substituted."""
+    result = prompt
+    result = result.replace("{{ transcript }}", transcript)
+    result = result.replace("{{transcript}}", transcript)
+    result = result.replace("{{ context }}", context)
+    result = result.replace("{{context}}", context)
+    result = result.replace("{{ notes }}", existing_notes)
+    result = result.replace("{{notes}}", existing_notes)
+    return result
+
+
+@app.post(
+    "/generate-note",
+    tags=["LLM"],
+    summary="Generate an AI note suggestion",
+    description="Generate a note suggestion using AI based on transcript and version context.",
+    response_model=GenerateNoteResponse,
+)
+async def generate_note(
+    request: GenerateNoteRequest,
+    storage_provider: StorageProviderDep,
+    prodtrack_provider: ProdtrackProviderDep,
+    llm_provider: LLMProviderDep,
+) -> GenerateNoteResponse:
+    """Generate an AI-powered note suggestion."""
+    try:
+        user_settings = await storage_provider.get_user_settings(request.user_email)
+        prompt = (
+            user_settings.note_prompt
+            if user_settings and user_settings.note_prompt
+            else DEFAULT_PROMPT
+        )
+
+        segments = await storage_provider.get_segments_for_version(
+            request.playlist_id, request.version_id
+        )
+        transcript = _build_transcript_text(segments)
+
+        version = cast(
+            Version,
+            prodtrack_provider.get_entity(
+                "version", request.version_id, resolve_links=False
+            ),
+        )
+        context = _build_version_context(version)
+
+        draft_note = await storage_provider.get_draft_note(
+            request.user_email, request.playlist_id, request.version_id
+        )
+        existing_notes = draft_note.content if draft_note else ""
+
+        full_prompt = _build_full_prompt(prompt, transcript, context, existing_notes)
+
+        suggestion = await llm_provider.generate_note(
+            prompt=prompt,
+            transcript=transcript,
+            context=context,
+            existing_notes=existing_notes,
+        )
+
+        return GenerateNoteResponse(
+            suggestion=suggestion,
+            prompt=full_prompt,
+            context=context,
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

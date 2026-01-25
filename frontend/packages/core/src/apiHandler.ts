@@ -19,6 +19,8 @@ import {
   GetUserSettingsParams,
   UpsertUserSettingsParams,
   DeleteUserSettingsParams,
+  GenerateNoteParams,
+  GenerateNoteResponse,
   DraftNote,
   Playlist,
   PlaylistMetadata,
@@ -241,6 +243,14 @@ class ApiHandler {
     return this.delete<boolean>(
       `/users/${encodeURIComponent(params.userEmail)}/settings`
     );
+  }
+
+  async generateNote(params: GenerateNoteParams): Promise<GenerateNoteResponse> {
+    return this.post<GenerateNoteResponse>('/generate-note', {
+      playlist_id: params.playlistId,
+      version_id: params.versionId,
+      user_email: params.userEmail,
+    });
   }
 }
 

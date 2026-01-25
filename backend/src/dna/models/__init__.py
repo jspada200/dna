@@ -32,6 +32,8 @@ from dna.models.requests import (
     EntityLink,
     FilterCondition,
     FindRequest,
+    GenerateNoteRequest,
+    GenerateNoteResponse,
 )
 from dna.models.stored_segment import (
     StoredSegment,
@@ -68,6 +70,8 @@ __all__ = [
     "CreateNoteRequest",
     "FilterCondition",
     "FindRequest",
+    "GenerateNoteRequest",
+    "GenerateNoteResponse",
     "DraftNote",
     "DraftNoteBase",
     "DraftNoteCreate",
