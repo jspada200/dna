@@ -7,10 +7,13 @@ import {
   AlertCircle,
   CheckCircle2,
   Radio,
+  Pause,
+  Play,
 } from 'lucide-react';
 import { Button, TextField, Popover, Text } from '@radix-ui/themes';
 import type { BotStatusEnum } from '@dna/core';
-import { useTranscription, parseMeetingUrl } from '../hooks';
+import { useTranscription, parseMeetingUrl, usePlaylistMetadata, useUpsertPlaylistMetadata } from '../hooks';
+import { SplitButton } from './SplitButton';
 
 interface TranscriptionMenuProps {
   playlistId: number | null;
@@ -191,7 +194,7 @@ const CollapsedTriggerButton = styled.button<{ $phoneStatus: PhoneStatus }>`
   }
 `;
 
-function getStatusLabel(status: BotStatusEnum): string {
+function getStatusLabel(status: BotStatusEnum, isPaused: boolean): string {
   switch (status) {
     case 'idle':
       return 'Ready';
@@ -200,9 +203,9 @@ function getStatusLabel(status: BotStatusEnum): string {
     case 'waiting_room':
       return 'Awaiting Admission';
     case 'in_call':
-      return 'In Call';
+      return isPaused ? 'Paused' : 'In Call';
     case 'transcribing':
-      return 'Transcribing';
+      return isPaused ? 'Paused' : 'Transcribing';
     case 'failed':
       return 'Failed';
     case 'stopped':
@@ -214,7 +217,7 @@ function getStatusLabel(status: BotStatusEnum): string {
   }
 }
 
-function getButtonStatusLabel(status: BotStatusEnum): string {
+function getButtonStatusLabel(status: BotStatusEnum, isPaused: boolean): string {
   switch (status) {
     case 'joining':
       return 'Joining...';
@@ -222,7 +225,7 @@ function getButtonStatusLabel(status: BotStatusEnum): string {
       return 'Waiting';
     case 'in_call':
     case 'transcribing':
-      return 'Live';
+      return isPaused ? 'Paused' : 'Live';
     default:
       return '';
   }
@@ -262,7 +265,7 @@ function getStatusIcon(status: BotStatusEnum) {
   }
 }
 
-function getCollapsedLabel(status: BotStatusEnum): string {
+function getCollapsedLabel(status: BotStatusEnum, isPaused: boolean): string {
   switch (status) {
     case 'joining':
       return 'Joining';
@@ -270,7 +273,7 @@ function getCollapsedLabel(status: BotStatusEnum): string {
       return 'Waiting';
     case 'in_call':
     case 'transcribing':
-      return 'Live';
+      return isPaused ? 'Paused' : 'Live';
     default:
       return 'Call';
   }
@@ -292,10 +295,18 @@ export function TranscriptionMenu({ playlistId, collapsed = false }: Transcripti
     clearSession,
   } = useTranscription({ playlistId });
 
+  const { data: metadata } = usePlaylistMetadata(playlistId);
+  const { mutate: upsertMetadata } = useUpsertPlaylistMetadata(playlistId);
+
   const currentStatus = status?.status ?? session?.status ?? 'idle';
   const isActive = ['joining', 'waiting_room', 'in_call', 'transcribing'].includes(currentStatus);
   const phoneStatus = getPhoneStatus(currentStatus);
   const needsPasscode = parseMeetingUrl(meetingUrl)?.platform === 'teams';
+  const isPaused = metadata?.transcription_paused ?? false;
+
+  const handlePauseToggle = useCallback(() => {
+    upsertMetadata({ transcription_paused: !isPaused });
+  }, [upsertMetadata, isPaused]);
 
   const handleDispatch = useCallback(async () => {
     if (!meetingUrl.trim()) return;
@@ -326,12 +337,49 @@ export function TranscriptionMenu({ playlistId, collapsed = false }: Transcripti
     }
   };
 
+  const renderMainButtonContent = () => {
+    if (collapsed) {
+      return (
+        <>
+          <Phone size={18} className="phone-icon" />
+          {getCollapsedLabel(currentStatus, isPaused)}
+        </>
+      );
+    }
+
+    return (
+      <>
+        <Phone size={14} className="phone-icon" />
+        {isActive ? (
+          <>
+            <StatusIndicator $status={currentStatus} />
+            {getButtonStatusLabel(currentStatus, isPaused)}
+          </>
+        ) : (
+          'Transcription'
+        )}
+      </>
+    );
+  };
+
   const renderTrigger = () => {
+    if (isActive) {
+      return (
+        <SplitButton
+          onClick={() => setIsOpen(true)}
+          onRightClick={handlePauseToggle}
+          rightSlot={isPaused ? <Play size={14} /> : <Pause size={14} />}
+        >
+          {renderMainButtonContent()}
+        </SplitButton>
+      );
+    }
+
     if (collapsed) {
       return (
         <CollapsedTriggerButton $phoneStatus={phoneStatus}>
           <Phone size={18} className="phone-icon" />
-          {getCollapsedLabel(currentStatus)}
+          {getCollapsedLabel(currentStatus, isPaused)}
         </CollapsedTriggerButton>
       );
     }
@@ -339,23 +387,26 @@ export function TranscriptionMenu({ playlistId, collapsed = false }: Transcripti
     return (
       <TriggerButton $isActive={isActive} $phoneStatus={phoneStatus}>
         <Phone size={14} className="phone-icon" />
-        {isActive ? (
-          <>
-            <StatusIndicator $status={currentStatus} />
-            {getButtonStatusLabel(currentStatus)}
-          </>
-        ) : (
-          'Transcription'
-        )}
+        Transcription
       </TriggerButton>
     );
   };
 
   return (
     <Popover.Root open={isOpen} onOpenChange={handleOpenChange}>
-      <Popover.Trigger>
-        {renderTrigger()}
-      </Popover.Trigger>
+      {isActive ? (
+        <Popover.Anchor asChild>
+          <div style={{ display: 'inline-block' }}>
+            {renderTrigger()}
+          </div>
+        </Popover.Anchor>
+      ) : (
+        <Popover.Trigger asChild>
+          <div style={{ display: 'inline-block' }}>
+            {renderTrigger()}
+          </div>
+        </Popover.Trigger>
+      )}
       <Popover.Content side="top" align="start" sideOffset={8}>
         <MenuContainer>
           <Text size="2" weight="medium">
@@ -366,7 +417,7 @@ export function TranscriptionMenu({ playlistId, collapsed = false }: Transcripti
             <StatusRow>
               <StatusIndicator $status={currentStatus} />
               {getStatusIcon(currentStatus)}
-              <StatusText>{getStatusLabel(currentStatus)}</StatusText>
+              <StatusText>{getStatusLabel(currentStatus, isPaused)}</StatusText>
             </StatusRow>
           )}
 
