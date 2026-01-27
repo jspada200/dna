@@ -155,6 +155,10 @@ const SpinnerIcon = styled(Loader2)`
   }
 `;
 
+const PulsingPhone = styled(Phone)<{ $shouldPulse: boolean }>`
+  animation: ${({ $shouldPulse }) => ($shouldPulse ? pulse : 'none')} 1.5s ease-in-out infinite;
+`;
+
 const CollapsedTriggerButton = styled.button<{ $phoneStatus: PhoneStatus }>`
   display: flex;
   flex-direction: column;
@@ -291,7 +295,14 @@ export function TranscriptionMenu({ playlistId, collapsed = false }: Transcripti
   const needsPasscode = parseMeetingUrl(meetingUrl)?.platform === 'teams';
   const isPaused = metadata?.transcription_paused ?? false;
 
+  const isLiveButPaused = isPaused && ['in_call', 'transcribing'].includes(currentStatus);
+  const isAwaitingAdmission = currentStatus === 'waiting_room';
+  const shouldPulseYellow = isLiveButPaused || isAwaitingAdmission;
+
   const getPhoneIconColor = () => {
+    if (shouldPulseYellow) {
+      return theme.colors.status.warning;
+    }
     switch (phoneStatus) {
       case 'connected':
         return theme.colors.status.success;
@@ -340,12 +351,12 @@ export function TranscriptionMenu({ playlistId, collapsed = false }: Transcripti
 
   const renderMainButtonContent = () => {
     if (collapsed) {
-      return <Phone size={18} color={phoneIconColor} />;
+      return <PulsingPhone size={18} color={phoneIconColor} $shouldPulse={shouldPulseYellow} />;
     }
 
     return (
       <>
-        <Phone size={14} color={phoneIconColor} />
+        <PulsingPhone size={14} color={phoneIconColor} $shouldPulse={shouldPulseYellow} />
         {isActive ? (
           <>
             <StatusIndicator $status={currentStatus} />
