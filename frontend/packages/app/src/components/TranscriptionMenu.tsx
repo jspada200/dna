@@ -366,7 +366,6 @@ export function TranscriptionMenu({ playlistId, collapsed = false }: Transcripti
     if (isActive) {
       return (
         <SplitButton
-          onClick={() => setIsOpen(true)}
           onRightClick={handlePauseToggle}
           rightSlot={isPaused ? <Play size={14} /> : <Pause size={14} />}
         >
@@ -394,19 +393,11 @@ export function TranscriptionMenu({ playlistId, collapsed = false }: Transcripti
 
   return (
     <Popover.Root open={isOpen} onOpenChange={handleOpenChange}>
-      {isActive ? (
-        <Popover.Anchor asChild>
-          <div style={{ display: 'inline-block' }}>
-            {renderTrigger()}
-          </div>
-        </Popover.Anchor>
-      ) : (
-        <Popover.Trigger asChild>
-          <div style={{ display: 'inline-block' }}>
-            {renderTrigger()}
-          </div>
-        </Popover.Trigger>
-      )}
+      <Popover.Trigger asChild>
+        <div style={{ display: 'inline-block' }}>
+          {renderTrigger()}
+        </div>
+      </Popover.Trigger>
       <Popover.Content side="top" align="start" sideOffset={8}>
         <MenuContainer>
           <Text size="2" weight="medium">
