@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, useTheme } from 'styled-components';
 import {
   Phone,
   PhoneOff,
@@ -265,24 +265,11 @@ function getStatusIcon(status: BotStatusEnum) {
   }
 }
 
-function getCollapsedLabel(status: BotStatusEnum, isPaused: boolean): string {
-  switch (status) {
-    case 'joining':
-      return 'Joining';
-    case 'waiting_room':
-      return 'Waiting';
-    case 'in_call':
-    case 'transcribing':
-      return isPaused ? 'Paused' : 'Live';
-    default:
-      return 'Call';
-  }
-}
-
 export function TranscriptionMenu({ playlistId, collapsed = false }: TranscriptionMenuProps) {
   const [meetingUrl, setMeetingUrl] = useState('');
   const [passcode, setPasscode] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const theme = useTheme();
 
   const {
     session,
@@ -303,6 +290,20 @@ export function TranscriptionMenu({ playlistId, collapsed = false }: Transcripti
   const phoneStatus = getPhoneStatus(currentStatus);
   const needsPasscode = parseMeetingUrl(meetingUrl)?.platform === 'teams';
   const isPaused = metadata?.transcription_paused ?? false;
+
+  const getPhoneIconColor = () => {
+    switch (phoneStatus) {
+      case 'connected':
+        return theme.colors.status.success;
+      case 'connecting':
+        return theme.colors.status.warning;
+      case 'disconnected':
+      default:
+        return theme.colors.status.error;
+    }
+  };
+
+  const phoneIconColor = getPhoneIconColor();
 
   const handlePauseToggle = useCallback(() => {
     upsertMetadata({ transcription_paused: !isPaused });
@@ -339,17 +340,12 @@ export function TranscriptionMenu({ playlistId, collapsed = false }: Transcripti
 
   const renderMainButtonContent = () => {
     if (collapsed) {
-      return (
-        <>
-          <Phone size={18} className="phone-icon" />
-          {getCollapsedLabel(currentStatus, isPaused)}
-        </>
-      );
+      return <Phone size={18} color={phoneIconColor} />;
     }
 
     return (
       <>
-        <Phone size={14} className="phone-icon" />
+        <Phone size={14} color={phoneIconColor} />
         {isActive ? (
           <>
             <StatusIndicator $status={currentStatus} />
@@ -378,7 +374,6 @@ export function TranscriptionMenu({ playlistId, collapsed = false }: Transcripti
       return (
         <CollapsedTriggerButton $phoneStatus={phoneStatus}>
           <Phone size={18} className="phone-icon" />
-          {getCollapsedLabel(currentStatus, isPaused)}
         </CollapsedTriggerButton>
       );
     }
