@@ -418,45 +418,6 @@ export function TranscriptionMenu({
     }
 
     return (
-      <>
-        <PulsingPhone
-          size={14}
-          color={phoneIconColor}
-          $shouldPulse={shouldPulseYellow}
-        />
-        {isActive ? (
-          <>
-            <StatusIndicator $status={currentStatus} />
-            {getButtonStatusLabel(currentStatus, isPaused)}
-          </>
-        ) : (
-          'Transcription'
-        )}
-      </>
-    );
-  };
-
-  const renderTrigger = () => {
-    if (isActive) {
-      return (
-        <SplitButton
-          onRightClick={handlePauseToggle}
-          rightSlot={isPaused ? <Play size={14} /> : <Pause size={14} />}
-        >
-          {renderMainButtonContent()}
-        </SplitButton>
-      );
-    }
-
-    if (collapsed) {
-      return (
-        <CollapsedTriggerButton $phoneStatus={phoneStatus}>
-          <Phone size={18} className="phone-icon" />
-        </CollapsedTriggerButton>
-      );
-    }
-
-    return (
       <TriggerButton $isActive={isActive} $phoneStatus={phoneStatus}>
         <Phone size={14} className="phone-icon" />
         Transcription
