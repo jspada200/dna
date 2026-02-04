@@ -379,12 +379,41 @@ export function TranscriptionMenu({
 
   const renderMainButtonContent = () => {
     if (collapsed) {
+      return <PulsingPhone size={18} color={phoneIconColor} $shouldPulse={shouldPulseYellow} />;
+    }
+
+    return (
+      <>
+        <PulsingPhone size={14} color={phoneIconColor} $shouldPulse={shouldPulseYellow} />
+        {isActive ? (
+          <>
+            <StatusIndicator $status={currentStatus} />
+            {getButtonStatusLabel(currentStatus, isPaused)}
+          </>
+        ) : (
+          'Transcription'
+        )}
+      </>
+    );
+  };
+
+  const renderTrigger = () => {
+    if (isActive) {
       return (
-        <PulsingPhone
-          size={18}
-          color={phoneIconColor}
-          $shouldPulse={shouldPulseYellow}
-        />
+        <SplitButton
+          onRightClick={handlePauseToggle}
+          rightSlot={isPaused ? <Play size={14} /> : <Pause size={14} />}
+        >
+          {renderMainButtonContent()}
+        </SplitButton>
+      );
+    }
+
+    if (collapsed) {
+      return (
+        <CollapsedTriggerButton $phoneStatus={phoneStatus}>
+          <Phone size={18} className="phone-icon" />
+        </CollapsedTriggerButton>
       );
     }
 
