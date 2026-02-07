@@ -4,10 +4,11 @@ import os
 from functools import lru_cache
 from typing import Annotated, Optional, cast
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from dna.events import EventPublisher, EventType, get_event_publisher
+from dna.events import get_event_publisher
+
 from dna.llm_providers.default_prompt import DEFAULT_PROMPT
 from dna.llm_providers.llm_provider_base import LLMProviderBase, get_llm_provider
 from dna.models import (
@@ -53,6 +54,7 @@ from dna.transcription_providers.transcription_provider_base import (
     TranscriptionProviderBase,
     get_transcription_provider,
 )
+from dna.transcription_service import TranscriptionService, get_transcription_service
 
 # API metadata for Swagger documentation
 API_TITLE = "DNA Backend"
@@ -208,12 +210,34 @@ LLMProviderDep = Annotated[LLMProviderBase, Depends(get_llm_provider_cached)]
 
 
 @lru_cache
-def get_event_publisher_cached() -> EventPublisher:
-    """Get or create the event publisher singleton."""
-    return get_event_publisher()
+def get_transcription_service_cached() -> TranscriptionService:
+    """Get or create the transcription service singleton."""
+    return get_transcription_service()
 
 
-EventPublisherDep = Annotated[EventPublisher, Depends(get_event_publisher_cached)]
+TranscriptionServiceDep = Annotated[
+    TranscriptionService, Depends(get_transcription_service_cached)
+]
+
+
+# -----------------------------------------------------------------------------
+# Lifecycle events
+# -----------------------------------------------------------------------------
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup."""
+    service = get_transcription_service()
+    await service.init_providers()
+    await service.resubscribe_to_active_meetings()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up services on shutdown."""
+    service = get_transcription_service()
+    await service.close()
 
 
 # -----------------------------------------------------------------------------
@@ -243,6 +267,37 @@ async def root():
 async def health():
     """Health check endpoint for monitoring and load balancers."""
     return {"status": "healthy"}
+
+
+# -----------------------------------------------------------------------------
+# WebSocket endpoint
+# -----------------------------------------------------------------------------
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time event streaming.
+
+    Clients connect to this endpoint to receive real-time events such as:
+    - segment.created / segment.updated: Transcript segment changes
+    - bot.status_changed: Bot status updates
+    - transcription.completed / transcription.error: Transcription lifecycle events
+
+    Events are sent as JSON messages with the format:
+    {"type": "event.type", "payload": {...}}
+    """
+    event_publisher = get_event_publisher()
+    ws_manager = event_publisher.ws_manager
+
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            try:
+                await websocket.receive_text()
+            except WebSocketDisconnect:
+                break
+    finally:
+        await ws_manager.disconnect(websocket)
 
 
 # -----------------------------------------------------------------------------
@@ -841,7 +896,7 @@ async def dispatch_bot(
     request: DispatchBotRequest,
     transcription_provider: TranscriptionProviderDep,
     storage_provider: StorageProviderDep,
-    event_publisher: EventPublisherDep,
+    transcription_service: TranscriptionServiceDep,
 ) -> BotSession:
     """Dispatch a transcription bot to a meeting."""
     try:
@@ -863,13 +918,10 @@ async def dispatch_bot(
             ),
         )
 
-        await event_publisher.publish(
-            EventType.TRANSCRIPTION_SUBSCRIBE,
-            {
-                "playlist_id": request.playlist_id,
-                "meeting_id": request.meeting_id,
-                "platform": request.platform.value,
-            },
+        await transcription_service.subscribe_to_meeting(
+            platform=request.platform.value,
+            meeting_id=request.meeting_id,
+            playlist_id=request.playlist_id,
         )
 
         return session
