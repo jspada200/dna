@@ -1,9 +1,99 @@
 """Tests for the in-memory Event Publisher."""
 
+import json
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from dna.events import EventType, reset_event_publisher
-from dna.events.event_publisher import EventPublisher, get_event_publisher
+from dna.events.event_publisher import (
+    EventPublisher,
+    WebSocketManager,
+    get_event_publisher,
+)
+
+
+class TestWebSocketManager:
+    """Tests for WebSocketManager class."""
+
+    @pytest.mark.asyncio
+    async def test_connect_accepts_and_registers_websocket(self):
+        """Test that connect accepts the websocket and adds to connections."""
+        manager = WebSocketManager()
+        mock_ws = AsyncMock()
+
+        await manager.connect(mock_ws)
+
+        mock_ws.accept.assert_called_once()
+        assert mock_ws in manager._connections
+        assert manager.connection_count == 1
+
+    @pytest.mark.asyncio
+    async def test_disconnect_removes_websocket(self):
+        """Test that disconnect removes the websocket from connections."""
+        manager = WebSocketManager()
+        mock_ws = AsyncMock()
+
+        await manager.connect(mock_ws)
+        assert manager.connection_count == 1
+
+        await manager.disconnect(mock_ws)
+        assert manager.connection_count == 0
+
+    @pytest.mark.asyncio
+    async def test_disconnect_handles_unknown_websocket(self):
+        """Test that disconnect gracefully handles unknown websocket."""
+        manager = WebSocketManager()
+        mock_ws = AsyncMock()
+
+        await manager.disconnect(mock_ws)
+        assert manager.connection_count == 0
+
+    @pytest.mark.asyncio
+    async def test_broadcast_sends_to_all_connections(self):
+        """Test that broadcast sends message to all connected clients."""
+        manager = WebSocketManager()
+        mock_ws1 = AsyncMock()
+        mock_ws2 = AsyncMock()
+
+        await manager.connect(mock_ws1)
+        await manager.connect(mock_ws2)
+
+        message = {"type": "test", "payload": {"data": "value"}}
+        await manager.broadcast(message)
+
+        expected_json = json.dumps(message)
+        mock_ws1.send_text.assert_called_once_with(expected_json)
+        mock_ws2.send_text.assert_called_once_with(expected_json)
+
+    @pytest.mark.asyncio
+    async def test_broadcast_removes_failed_connections(self):
+        """Test that broadcast removes connections that fail to send."""
+        manager = WebSocketManager()
+        mock_ws_good = AsyncMock()
+        mock_ws_bad = AsyncMock()
+        mock_ws_bad.send_text.side_effect = Exception("Connection closed")
+
+        await manager.connect(mock_ws_good)
+        await manager.connect(mock_ws_bad)
+        assert manager.connection_count == 2
+
+        await manager.broadcast({"type": "test"})
+
+        assert manager.connection_count == 1
+        assert mock_ws_good in manager._connections
+        assert mock_ws_bad not in manager._connections
+
+    @pytest.mark.asyncio
+    async def test_broadcast_does_nothing_with_no_connections(self):
+        """Test that broadcast does nothing when no clients connected."""
+        manager = WebSocketManager()
+        await manager.broadcast({"type": "test"})
+
+    def test_connection_count_property(self):
+        """Test that connection_count returns correct count."""
+        manager = WebSocketManager()
+        assert manager.connection_count == 0
 
 
 class TestEventPublisher:
@@ -14,6 +104,12 @@ class TestEventPublisher:
         publisher = EventPublisher()
         assert publisher._subscribers == {}
         assert publisher._global_subscribers == []
+
+    def test_init_creates_ws_manager(self):
+        """Test initialization creates WebSocketManager."""
+        publisher = EventPublisher()
+        assert publisher.ws_manager is not None
+        assert isinstance(publisher.ws_manager, WebSocketManager)
 
     @pytest.mark.asyncio
     async def test_connect_is_noop(self):
@@ -138,6 +234,20 @@ class TestEventPublisher:
         await publisher.publish(EventType.SEGMENT_CREATED, {"test": "data"})
 
         assert len(received_events) == 1
+
+    @pytest.mark.asyncio
+    async def test_publish_broadcasts_to_websocket_clients(self):
+        """Test that publish broadcasts events to WebSocket clients."""
+        publisher = EventPublisher()
+        mock_ws = AsyncMock()
+
+        await publisher.ws_manager.connect(mock_ws)
+        await publisher.publish(EventType.SEGMENT_CREATED, {"test": "data"})
+
+        mock_ws.send_text.assert_called_once()
+        sent_message = json.loads(mock_ws.send_text.call_args[0][0])
+        assert sent_message["type"] == "segment.created"
+        assert sent_message["payload"] == {"test": "data"}
 
     @pytest.mark.asyncio
     async def test_close_clears_all_subscribers(self):
