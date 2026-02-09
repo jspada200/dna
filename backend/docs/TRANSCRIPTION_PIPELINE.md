@@ -23,21 +23,21 @@ The transcription pipeline enables real-time meeting transcription by:
 1. **Dispatching bots** to join meetings (Google Meet, Zoom, Teams)
 2. **Receiving real-time transcripts** via WebSocket from Vexa
 3. **Persisting segments** to MongoDB with unique IDs
-4. **Publishing events** to RabbitMQ for UI updates
-5. **Recovering gracefully** from worker restarts
+4. **Broadcasting events** to connected frontend clients via WebSocket
+5. **Recovering gracefully** from backend restarts
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Frontend  │────▶│  DNA API    │────▶│   Worker    │────▶│   MongoDB   │
-│    (React)  │     │  (FastAPI)  │     │  (asyncio)  │     │  (segments) │
-└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
-                           │                   │
-                           │                   │
-                           ▼                   ▼
-                    ┌─────────────┐     ┌─────────────┐
-                    │  RabbitMQ   │◀───▶│    Vexa     │
-                    │  (events)   │     │ (transcribe)│
-                    └─────────────┘     └─────────────┘
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│    Frontend     │◀───▶│    DNA API      │────▶│     MongoDB     │
+│     (React)     │ WS  │    (FastAPI)    │     │    (segments)   │
+└─────────────────┘     └────────┬────────┘     └─────────────────┘
+                                 │
+                                 │ WebSocket
+                                 ▼
+                        ┌─────────────────┐
+                        │      Vexa       │
+                        │  (transcribe)   │
+                        └─────────────────┘
 ```
 
 ---
@@ -53,19 +53,19 @@ graph TB
         WS[WebSocket Client]
     end
 
-    subgraph DNA Backend
+    subgraph DNA_Backend[DNA Backend]
         API[FastAPI Server]
-        Worker[Event Worker]
+        TS[TranscriptionService]
         EP[Event Publisher]
+        WSM[WebSocket Manager]
     end
 
-    subgraph External Services
+    subgraph External_Services[External Services]
         Vexa[Vexa Transcription]
-        RabbitMQ[RabbitMQ]
         MongoDB[(MongoDB)]
     end
 
-    subgraph Meeting Platforms
+    subgraph Meeting_Platforms[Meeting Platforms]
         GM[Google Meet]
         Zoom[Zoom]
         Teams[MS Teams]
@@ -73,21 +73,20 @@ graph TB
 
     UI -->|POST /transcription/bot| API
     API -->|dispatch_bot| Vexa
-    API -->|publish event| RabbitMQ
+    API -->|subscribe_to_meeting| TS
     
-    RabbitMQ -->|consume| Worker
-    Worker -->|subscribe WebSocket| Vexa
+    TS -->|subscribe WebSocket| Vexa
     
     Vexa -->|join meeting| GM
     Vexa -->|join meeting| Zoom
     Vexa -->|join meeting| Teams
     
-    Vexa -->|transcript.mutable| Worker
-    Worker -->|upsert_segment| MongoDB
-    Worker -->|publish| EP
-    EP -->|segment.created/updated| RabbitMQ
+    Vexa -->|transcript.mutable| TS
+    TS -->|upsert_segment| MongoDB
+    TS -->|publish| EP
+    EP -->|broadcast| WSM
     
-    RabbitMQ -->|events| WS
+    WSM -->|events| WS
     WS -->|update UI| UI
 ```
 
@@ -97,31 +96,34 @@ graph TB
 sequenceDiagram
     participant UI as Frontend
     participant API as DNA API
-    participant RMQ as RabbitMQ
-    participant Worker as Event Worker
+    participant TS as TranscriptionService
     participant Vexa as Vexa Service
     participant Mongo as MongoDB
+    participant WSM as WebSocket Manager
+
+    UI->>API: Connect to /ws
+    API->>WSM: Register client
 
     UI->>API: POST /transcription/bot
     API->>Vexa: POST /bots (dispatch)
     Vexa-->>API: 201 Created (vexa_meeting_id)
     API->>Mongo: upsert playlist_metadata (vexa_meeting_id)
-    API->>RMQ: publish transcription.subscribe
+    API->>TS: subscribe_to_meeting()
+    API->>WSM: broadcast bot.status_changed (dispatching)
     API-->>UI: 201 BotSession
 
-    RMQ->>Worker: consume transcription.subscribe
-    Worker->>Vexa: WebSocket subscribe(platform, meeting_id)
-    Vexa-->>Worker: subscribed confirmation
+    TS->>Vexa: WebSocket subscribe(platform, meeting_id)
+    Vexa-->>TS: subscribed confirmation
 
     loop Real-time Transcription
-        Vexa->>Worker: transcript.mutable (segments)
-        Worker->>Mongo: upsert_segment (by segment_id)
-        Worker->>RMQ: publish segment.created/updated
-        RMQ->>UI: segment event (via WebSocket)
+        Vexa->>TS: transcript.mutable (segments)
+        TS->>Mongo: upsert_segment (by segment_id)
+        TS->>WSM: broadcast segment.created/updated
+        WSM->>UI: segment event (via WebSocket)
     end
 
-    Vexa->>Worker: meeting.status (completed)
-    Worker->>RMQ: publish transcription.completed
+    Vexa->>TS: meeting.status (completed)
+    TS->>WSM: broadcast transcription.completed
 ```
 
 ---
@@ -130,39 +132,67 @@ sequenceDiagram
 
 ### 1. DNA API (FastAPI)
 
-The API server handles HTTP requests and initiates the transcription flow.
+The API server handles HTTP requests, WebSocket connections, and orchestrates the transcription flow.
 
 **Key Endpoints:**
 - `POST /transcription/bot` - Dispatch a bot to a meeting
 - `DELETE /transcription/bot/{platform}/{meeting_id}` - Stop a bot
+- `GET /ws` - WebSocket endpoint for real-time events
 
 **Responsibilities:**
 - Validate requests
 - Call Vexa API to dispatch/stop bots
 - Store `vexa_meeting_id` in playlist metadata
-- Publish `transcription.subscribe` event to RabbitMQ
+- Manage WebSocket connections for event broadcasting
 
-### 2. Event Worker
+### 2. TranscriptionService
 
-An async Python worker that consumes RabbitMQ events and manages WebSocket connections to Vexa.
+An integrated service within the FastAPI process that manages Vexa WebSocket connections.
 
 **Responsibilities:**
 - Subscribe to meeting transcripts via WebSocket
 - Process incoming transcript segments
 - Generate unique segment IDs
 - Persist segments to MongoDB
-- Publish segment events for UI updates
+- Publish events to connected clients
 - Recover subscriptions on restart
 
 **Key Methods:**
 | Method | Description |
 |--------|-------------|
-| `on_transcription_subscribe` | Subscribe to a meeting's WebSocket feed |
+| `subscribe_to_meeting` | Subscribe to a meeting's WebSocket feed |
 | `on_transcription_updated` | Process and persist transcript segments |
-| `_on_vexa_event` | Forward Vexa events to RabbitMQ |
+| `_on_vexa_event` | Handle Vexa events and publish to clients |
 | `resubscribe_to_active_meetings` | Recovery on startup |
 
-### 3. Vexa Transcription Provider
+### 3. EventPublisher & WebSocketManager
+
+Handles in-memory event publishing and WebSocket broadcasting.
+
+**Features:**
+- In-memory pub/sub for internal events
+- WebSocket connection management
+- Automatic broadcast to all connected clients
+- Connection cleanup on disconnect
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                         EventPublisher                          │
+├────────────────────────────────────────────────────────────────┤
+│  subscribe(event_type, callback)  → () => void (unsubscribe)   │
+│  publish(event_type, payload)     → broadcasts to:             │
+│     ├── Internal subscribers (TranscriptionService, etc.)      │
+│     └── WebSocket clients (via WebSocketManager)               │
+├────────────────────────────────────────────────────────────────┤
+│                       WebSocketManager                          │
+├────────────────────────────────────────────────────────────────┤
+│  connect(websocket)     → Accept and register client           │
+│  disconnect(websocket)  → Remove client from registry          │
+│  broadcast(message)     → Send JSON to all connected clients   │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### 4. Vexa Transcription Provider
 
 Abstraction layer for Vexa API interactions.
 
@@ -194,7 +224,7 @@ Abstraction layer for Vexa API interactions.
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### 4. MongoDB Storage Provider
+### 5. MongoDB Storage Provider
 
 Handles all database operations for playlist metadata and segments.
 
@@ -213,15 +243,16 @@ flowchart LR
     A[User clicks Start Transcription] --> B[POST /transcription/bot]
     B --> C{Vexa API}
     C -->|201 Created| D[Store vexa_meeting_id]
-    D --> E[Publish transcription.subscribe]
-    E --> F[Return BotSession to UI]
+    D --> E[Subscribe to meeting events]
+    E --> F[Broadcast bot.status_changed]
+    F --> G[Return BotSession to UI]
 ```
 
 ### 2. Transcript Processing Flow
 
 ```mermaid
 flowchart TD
-    A[Vexa WebSocket] -->|transcript.mutable| B[Worker receives message]
+    A[Vexa WebSocket] -->|transcript.mutable| B[TranscriptionService receives message]
     B --> C{Has internal ID mapping?}
     C -->|No| D[Log warning, skip]
     C -->|Yes| E[Resolve platform:meeting_id]
@@ -238,8 +269,8 @@ flowchart TD
     M -->|Yes| O[Generate segment_id]
     O --> P[Upsert to MongoDB]
     P --> Q{Is new segment?}
-    Q -->|Yes| R[Publish segment.created]
-    Q -->|No| S[Publish segment.updated]
+    Q -->|Yes| R[Broadcast segment.created]
+    Q -->|No| S[Broadcast segment.updated]
 ```
 
 ### 3. Segment ID Generation
@@ -279,46 +310,61 @@ This ensures:
 
 | Event Type | Publisher | Consumer | Description |
 |------------|-----------|----------|-------------|
-| `transcription.subscribe` | API | Worker | Request to subscribe to meeting |
-| `transcription.started` | Worker | UI | Bot joined meeting |
-| `transcription.updated` | Worker | Worker | Raw transcript from Vexa |
-| `transcription.completed` | Worker | UI | Meeting ended |
-| `transcription.error` | Worker | UI | Transcription failed |
-| `bot.status_changed` | Worker | UI | Bot status update |
-| `segment.created` | Worker | UI | New segment persisted |
-| `segment.updated` | Worker | UI | Existing segment updated |
+| `bot.status_changed` | API/TranscriptionService | Frontend | Bot status update |
+| `segment.created` | TranscriptionService | Frontend | New segment persisted |
+| `segment.updated` | TranscriptionService | Frontend | Existing segment updated |
+| `transcription.completed` | TranscriptionService | Frontend | Meeting ended |
+| `transcription.error` | TranscriptionService | Frontend | Transcription failed |
+| `playlist.updated` | API | Frontend | Playlist metadata changed |
+| `version.updated` | API | Frontend | Version data changed |
 
 ### Event Flow Diagram
 
 ```
-                              RabbitMQ Exchange: dna.events
-                              ════════════════════════════════
-                                           │
-           ┌───────────────────────────────┼───────────────────────────────┐
-           │                               │                               │
-           ▼                               ▼                               ▼
-    ┌──────────────┐              ┌──────────────┐              ┌──────────────┐
-    │transcription.│              │   segment.   │              │    bot.      │
-    │  subscribe   │              │   created    │              │status_changed│
-    │              │              │              │              │              │
-    │ {platform,   │              │ {segment_id, │              │ {status,     │
-    │  meeting_id, │              │  playlist_id,│              │  platform,   │
-    │  playlist_id}│              │  version_id, │              │  meeting_id} │
-    └──────────────┘              │  text,       │              └──────────────┘
-           │                      │  speaker,    │                     │
-           │                      │  start_time, │                     │
-           ▼                      │  end_time}   │                     ▼
-      Worker                      └──────────────┘                    UI
-    subscribes                           │
-    to Vexa WS                           ▼
-                                        UI
-                                   displays/updates
-                                      segments
+                       DNA API WebSocket (/ws)
+                       ═════════════════════════
+                                 │
+           ┌─────────────────────┼─────────────────────┐
+           │                     │                     │
+           ▼                     ▼                     ▼
+    ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+    │   segment.   │      │    bot.      │      │transcription.│
+    │   created    │      │status_changed│      │  completed   │
+    │              │      │              │      │              │
+    │ {segment_id, │      │ {status,     │      │ {platform,   │
+    │  playlist_id,│      │  platform,   │      │  meeting_id} │
+    │  version_id, │      │  meeting_id, │      │              │
+    │  text,       │      │  playlist_id,│      └──────────────┘
+    │  speaker,    │      │  recovered}  │             │
+    │  start_time} │      └──────────────┘             │
+    └──────────────┘             │                     ▼
+           │                     │              Frontend UI
+           ▼                     ▼              shows status
+      Frontend UI           Frontend UI
+    displays/updates      shows bot status
+      segments
 ```
 
-### Message Formats
+### Message Format
 
-#### Vexa WebSocket Messages
+Events are sent as JSON over WebSocket:
+
+```json
+{
+  "type": "segment.created",
+  "payload": {
+    "segment_id": "a3f2b1c4d5e6f7a8",
+    "playlist_id": 42,
+    "version_id": 5,
+    "text": "Hello, this is a test.",
+    "speaker": "John Doe",
+    "absolute_start_time": "2026-01-23T04:00:00.000Z",
+    "absolute_end_time": "2026-01-23T04:00:05.000Z"
+  }
+}
+```
+
+### Vexa WebSocket Messages
 
 **transcript.mutable** (from Vexa):
 ```json
@@ -335,29 +381,6 @@ This ensures:
       "updated_at": "2026-01-23T04:00:05.000Z"
     }
   ]
-}
-```
-
-**subscribed** (from Vexa):
-```json
-{
-  "type": "subscribed",
-  "meetings": [
-    {"platform": "google_meet", "native_id": "abc-def-ghi", "id": 123}
-  ]
-}
-```
-
-**meeting.status** (from Vexa):
-```json
-{
-  "type": "meeting.status",
-  "meeting": {
-    "platform": "google_meet",
-    "native_id": "abc-def-ghi",
-    "id": 123
-  },
-  "status": "in_meeting"
 }
 ```
 
@@ -419,39 +442,17 @@ interface BotSession {
 }
 ```
 
-### Entity Relationship Diagram
-
-```
-┌─────────────────┐         ┌─────────────────┐         ┌─────────────────┐
-│    Playlist     │         │PlaylistMetadata │         │   StoredSegment │
-├─────────────────┤         ├─────────────────┤         ├─────────────────┤
-│ id: int (PK)    │◄────────│ playlist_id: int│────────▶│ playlist_id: int│
-│ name: str       │         │ in_review: int  │────┐    │ version_id: int │
-│ ...             │         │ meeting_id: str │    │    │ segment_id: str │
-└─────────────────┘         │ platform: str   │    │    │ text: str       │
-                            │ vexa_meeting_id │    │    │ speaker: str    │
-                            └─────────────────┘    │    │ start_time: str │
-                                                   │    │ end_time: str   │
-┌─────────────────┐                                │    └─────────────────┘
-│     Version     │                                │            ▲
-├─────────────────┤                                │            │
-│ id: int (PK)    │◄───────────────────────────────┘            │
-│ playlist_id: int│                                              │
-│ ...             │──────────────────────────────────────────────┘
-└─────────────────┘         (segments belong to version)
-```
-
 ---
 
 ## Recovery Mechanisms
 
-### Worker Restart Recovery
+### Backend Restart Recovery
 
-When the worker restarts mid-meeting, it recovers active subscriptions:
+When the backend restarts mid-meeting, it recovers active subscriptions:
 
 ```mermaid
 flowchart TD
-    A[Worker Starts] --> B[Initialize Providers]
+    A[Backend Starts] --> B[Initialize TranscriptionService]
     B --> C[Call resubscribe_to_active_meetings]
     C --> D[GET /bots/status from Vexa]
     D --> E{Any active bots?}
@@ -469,7 +470,7 @@ flowchart TD
     M --> N[Register ID mapping]
     N --> O[Store playlist mapping]
     O --> P[Subscribe to WebSocket]
-    P --> Q[Add to subscribed set]
+    P --> Q[Broadcast bot.status_changed with recovered=true]
     Q --> G
 ```
 
@@ -480,30 +481,6 @@ Vexa uses internal meeting IDs in transcript messages, but DNA uses platform:nat
 1. **At dispatch time**: `vexa_meeting_id` returned from Vexa is stored in playlist metadata
 2. **At recovery time**: Load from playlist metadata or bot status response
 3. **At runtime**: Captured from `subscribed` and `meeting.status` WebSocket messages
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Meeting ID Mapping Sources                    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  1. Dispatch Response (POST /bots)                              │
-│     └── Returns: {"meeting_id": 123, ...}                       │
-│         └── Stored in: playlist_metadata.vexa_meeting_id        │
-│                                                                  │
-│  2. Recovery (GET /bots/status)                                 │
-│     └── Returns: [{"meeting_id": 123, "native_meeting_id":...}] │
-│         └── Used to: register_meeting_id_mapping()              │
-│                                                                  │
-│  3. WebSocket "subscribed" message                              │
-│     └── Returns: {"meetings": [{"id": 123, ...}]}               │
-│         └── Maps: internal_id → pending subscription key        │
-│                                                                  │
-│  4. WebSocket "meeting.status" message                          │
-│     └── Returns: {"meeting": {"id": 123, "platform":...}}       │
-│         └── Maps: internal_id → platform:native_id              │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
 
 ---
 
@@ -549,6 +526,19 @@ Stop a transcription bot.
 true
 ```
 
+### WebSocket /ws
+
+Connect to receive real-time events.
+
+**Connection:**
+```javascript
+const ws = new WebSocket('ws://localhost:8000/ws');
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log(data.type, data.payload);
+};
+```
+
 ---
 
 ## Configuration
@@ -560,42 +550,43 @@ true
 | `VEXA_API_URL` | `http://vexa:8056` | Vexa REST API base URL |
 | `VEXA_WS_URL` | `ws://vexa:8056/ws` | Vexa WebSocket URL |
 | `VEXA_API_KEY` | (required) | API key for Vexa authentication |
-| `RABBITMQ_URL` | `amqp://dna:dna@localhost:5672/dna` | RabbitMQ connection URL |
 | `MONGODB_URL` | `mongodb://localhost:27017` | MongoDB connection URL |
 | `MONGODB_DB` | `dna` | MongoDB database name |
 
-### RabbitMQ Setup
+### Frontend Environment Variables
 
-```
-Exchange: dna.events (topic, durable)
-Queue: dna.events.worker (durable)
-Binding: # (all events)
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_WS_URL` | `ws://localhost:8000/ws` | Backend WebSocket URL |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | Backend API URL |
 
 ---
 
 ## Testing
 
-The worker has comprehensive test coverage:
+The transcription service has comprehensive test coverage:
 
 ```bash
 # Run all tests
 make test
 
-# Run worker tests only
-pytest tests/test_worker.py -v
+# Run transcription service tests only
+pytest tests/test_transcription_service.py -v
+
+# Run WebSocket tests
+pytest tests/test_websocket.py -v
 ```
 
 ### Test Categories
 
 | Category | Tests | Description |
 |----------|-------|-------------|
-| `TestHandleEvent` | 6 | Event routing |
-| `TestOnTranscriptionSubscribe` | 7 | Subscription handling |
-| `TestOnTranscriptionUpdated` | 10 | Segment processing |
-| `TestOnVexaEvent` | 7 | Vexa event forwarding |
-| `TestResubscribeToActiveMeetings` | 12 | Recovery logic |
+| `TestSubscribeToMeeting` | 5 | Subscription handling |
+| `TestOnTranscriptionUpdated` | 6 | Segment processing |
+| `TestOnVexaEvent` | 4 | Vexa event forwarding |
+| `TestResubscribeToActiveMeetings` | 10 | Recovery logic |
 | `TestSegmentIdGeneration` | 5 | ID generation |
+| `TestWebSocketEndpoint` | 5 | WebSocket broadcasting |
 
 ---
 
@@ -609,15 +600,15 @@ pytest tests/test_worker.py -v
 
 **Solution:** Ensure:
 1. `vexa_meeting_id` is stored in playlist metadata at dispatch time
-2. Worker loads mapping on restart via `resubscribe_to_active_meetings()`
+2. Backend loads mapping on restart via `resubscribe_to_active_meetings()`
 
 #### "No playlist_id found for meeting"
 
 **Cause:** The meeting_key → playlist_id mapping is missing.
 
 **Solution:** Check that:
-1. `transcription.subscribe` event includes `playlist_id`
-2. Worker stores mapping in `_meeting_to_playlist`
+1. `subscribe_to_meeting()` is called with correct `playlist_id`
+2. Service stores mapping in `_meeting_to_playlist`
 
 #### "No in_review version found for playlist"
 
@@ -625,13 +616,22 @@ pytest tests/test_worker.py -v
 
 **Solution:** Set `playlist_metadata.in_review` to a valid version ID before starting transcription.
 
+#### WebSocket not receiving events
+
+**Cause:** Client not connected to `/ws` endpoint.
+
+**Solution:**
+1. Verify WebSocket connection to `ws://localhost:8000/ws`
+2. Check browser console for connection errors
+3. Ensure backend is running and healthy
+
 ### Debug Logging
 
 Enable debug logging for detailed transcript processing:
 
 ```python
 import logging
-logging.getLogger("worker").setLevel(logging.DEBUG)
+logging.getLogger("dna.transcription_service").setLevel(logging.DEBUG)
 logging.getLogger("dna.transcription_providers.vexa").setLevel(logging.DEBUG)
 ```
 
@@ -646,22 +646,23 @@ logging.getLogger("dna.transcription_providers.vexa").setLevel(logging.DEBUG)
 **Rationale:**
 - Ensures idempotent upserts (same data = same ID)
 - Allows updating segment text as speaker continues
-- No coordination needed between distributed workers
+- No coordination needed between distributed components
 
 ### ADR-002: Store vexa_meeting_id in MongoDB
 
 **Decision:** Persist Vexa's internal meeting ID in playlist_metadata
 
 **Rationale:**
-- Required for worker recovery after restart
+- Required for service recovery after restart
 - WebSocket `subscribed` response doesn't always include internal ID
 - Eliminates dependency on Vexa API response format
 
-### ADR-003: Event-Driven Architecture
+### ADR-003: WebSocket API Gateway
 
-**Decision:** Use RabbitMQ for all inter-component communication
+**Decision:** Use native WebSocket at `/ws` for real-time event broadcasting
 
 **Rationale:**
-- Decouples API from worker processing
-- Enables horizontal scaling of workers
-- Provides durability for events during worker restarts
+- Simpler architecture (no external message broker)
+- Direct communication between backend and frontend
+- Reduced operational complexity
+- Lower latency for real-time events
