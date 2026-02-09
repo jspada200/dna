@@ -261,7 +261,7 @@ class TranscriptionService:
 
             speaker = segment_data.get("speaker", "Unknown")
             segment_id = generate_segment_id(
-                playlist_id, version_id, speaker, absolute_start_time
+                playlist_id, version_id, absolute_start_time
             )
 
             segment_create = StoredSegmentCreate(

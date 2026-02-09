@@ -267,7 +267,6 @@ class TestOnTranscriptionUpdated:
         expected_segment_id = generate_segment_id(
             playlist_id=42,
             version_id=5,
-            speaker="John Doe",
             absolute_start_time="2026-01-23T04:00:00.000Z",
         )
 
@@ -893,33 +892,37 @@ class TestSegmentIdGeneration:
 
     def test_same_inputs_generate_same_id(self):
         """Test that identical inputs generate the same segment ID."""
-        id1 = generate_segment_id(42, 5, "John Doe", "2026-01-23T04:00:00.000Z")
-        id2 = generate_segment_id(42, 5, "John Doe", "2026-01-23T04:00:00.000Z")
+        id1 = generate_segment_id(42, 5, "2026-01-23T04:00:00.000Z")
+        id2 = generate_segment_id(42, 5, "2026-01-23T04:00:00.000Z")
         assert id1 == id2
-
-    def test_different_speaker_generates_different_id(self):
-        """Test that different speakers generate different IDs."""
-        id1 = generate_segment_id(42, 5, "John Doe", "2026-01-23T04:00:00.000Z")
-        id2 = generate_segment_id(42, 5, "Jane Smith", "2026-01-23T04:00:00.000Z")
-        assert id1 != id2
 
     def test_different_start_time_generates_different_id(self):
         """Test that different start times generate different IDs."""
-        id1 = generate_segment_id(42, 5, "John Doe", "2026-01-23T04:00:00.000Z")
-        id2 = generate_segment_id(42, 5, "John Doe", "2026-01-23T04:00:05.000Z")
+        id1 = generate_segment_id(42, 5, "2026-01-23T04:00:00.000Z")
+        id2 = generate_segment_id(42, 5, "2026-01-23T04:00:05.000Z")
         assert id1 != id2
 
     def test_different_playlist_generates_different_id(self):
         """Test that different playlists generate different IDs."""
-        id1 = generate_segment_id(42, 5, "John Doe", "2026-01-23T04:00:00.000Z")
-        id2 = generate_segment_id(43, 5, "John Doe", "2026-01-23T04:00:00.000Z")
+        id1 = generate_segment_id(42, 5, "2026-01-23T04:00:00.000Z")
+        id2 = generate_segment_id(43, 5, "2026-01-23T04:00:00.000Z")
         assert id1 != id2
 
     def test_different_version_generates_different_id(self):
         """Test that different versions generate different IDs."""
-        id1 = generate_segment_id(42, 5, "John Doe", "2026-01-23T04:00:00.000Z")
-        id2 = generate_segment_id(42, 6, "John Doe", "2026-01-23T04:00:00.000Z")
+        id1 = generate_segment_id(42, 5, "2026-01-23T04:00:00.000Z")
+        id2 = generate_segment_id(42, 6, "2026-01-23T04:00:00.000Z")
         assert id1 != id2
+
+    def test_speaker_changes_do_not_affect_id(self):
+        """Test that the same start time generates the same ID regardless of speaker.
+
+        This is important because Vexa's mutable transcription can reassign
+        speakers as it refines the transcript.
+        """
+        id1 = generate_segment_id(42, 5, "2026-01-23T04:00:00.000Z")
+        id2 = generate_segment_id(42, 5, "2026-01-23T04:00:00.000Z")
+        assert id1 == id2
 
 
 class TestTranscriptionServiceLifecycle:
