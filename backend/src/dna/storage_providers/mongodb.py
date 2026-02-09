@@ -155,6 +155,12 @@ class MongoDBStorageProvider(StorageProviderBase):
     ) -> PlaylistMetadata:
         query = {"playlist_id": playlist_id}
         update_fields = {k: v for k, v in data.model_dump().items() if v is not None}
+
+        if data.transcription_paused is False:
+            existing = await self.playlist_metadata_collection.find_one(query)
+            if existing and existing.get("transcription_paused", False):
+                update_fields["transcription_resumed_at"] = datetime.now(timezone.utc)
+
         update: dict[str, Any] = {
             "$set": update_fields,
             "$setOnInsert": {"playlist_id": playlist_id},

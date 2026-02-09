@@ -461,6 +461,83 @@ class TestOnTranscriptionUpdated:
 
         assert mock_storage_provider.upsert_segment.call_count == 2
 
+    @pytest.mark.asyncio
+    async def test_skips_segments_before_resume_time(
+        self, service, mock_storage_provider, caplog
+    ):
+        """Test that segments from before the resume time are skipped."""
+        import logging
+        from datetime import datetime, timezone
+
+        caplog.set_level(logging.DEBUG)
+        service._meeting_to_playlist["google_meet:abc-def-ghi"] = 42
+
+        resumed_at = datetime(2026, 1, 23, 4, 0, 10, tzinfo=timezone.utc)
+        resumed_metadata = PlaylistMetadata(
+            _id="meta123",
+            playlist_id=42,
+            in_review=5,
+            meeting_id="abc-def-ghi",
+            platform="google_meet",
+            transcription_paused=False,
+            transcription_resumed_at=resumed_at,
+        )
+        mock_storage_provider.get_playlist_metadata.return_value = resumed_metadata
+        mock_storage_provider.upsert_segment.return_value = (
+            MagicMock(spec=StoredSegment),
+            True,
+        )
+
+        segments = [
+            {
+                "text": "Before pause - should be skipped",
+                "speaker": "John",
+                "absolute_start_time": "2026-01-23T04:00:05.000Z",
+                "absolute_end_time": "2026-01-23T04:00:08.000Z",
+            },
+            {
+                "text": "After resume - should be saved",
+                "speaker": "Jane",
+                "absolute_start_time": "2026-01-23T04:00:15.000Z",
+                "absolute_end_time": "2026-01-23T04:00:20.000Z",
+            },
+        ]
+
+        payload = {
+            "platform": "google_meet",
+            "meeting_id": "abc-def-ghi",
+            "segments": segments,
+        }
+
+        await service.on_transcription_updated(payload)
+
+        assert mock_storage_provider.upsert_segment.call_count == 1
+        call_kwargs = mock_storage_provider.upsert_segment.call_args.kwargs
+        assert call_kwargs["data"].text == "After resume - should be saved"
+        assert "Skipping segment from before resume" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_saves_all_segments_when_no_resume_time(
+        self, service, mock_storage_provider, sample_vexa_segments, sample_metadata
+    ):
+        """Test that all segments are saved when there is no resume time."""
+        service._meeting_to_playlist["google_meet:abc-def-ghi"] = 42
+        mock_storage_provider.get_playlist_metadata.return_value = sample_metadata
+        mock_storage_provider.upsert_segment.return_value = (
+            MagicMock(spec=StoredSegment),
+            True,
+        )
+
+        payload = {
+            "platform": "google_meet",
+            "meeting_id": "abc-def-ghi",
+            "segments": sample_vexa_segments,
+        }
+
+        await service.on_transcription_updated(payload)
+
+        assert mock_storage_provider.upsert_segment.call_count == 2
+
 
 class TestOnVexaEvent:
     """Tests for Vexa event forwarding."""

@@ -3,6 +3,7 @@
 Pydantic models for playlist metadata stored in the storage provider.
 """
 
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -36,3 +37,8 @@ class PlaylistMetadata(BaseModel):
     platform: Optional[str] = None
     vexa_meeting_id: Optional[int] = None
     transcription_paused: bool = False
+    transcription_resumed_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp when transcription was last resumed. "
+        "Segments with start time before this are discarded.",
+    )

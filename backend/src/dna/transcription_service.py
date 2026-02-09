@@ -1,6 +1,7 @@
 """Transcription service for managing Vexa subscriptions and segment processing."""
 
 import logging
+from datetime import datetime
 from typing import Any
 
 from dna.events import EventPublisher, EventType, get_event_publisher
@@ -249,6 +250,7 @@ class TranscriptionService:
             return
 
         version_id = metadata.in_review
+        resumed_at = metadata.transcription_resumed_at
 
         for segment_data in segments:
             text = segment_data.get("text", "").strip()
@@ -258,6 +260,21 @@ class TranscriptionService:
             absolute_start_time = segment_data.get("absolute_start_time")
             if not absolute_start_time:
                 continue
+
+            if resumed_at is not None:
+                try:
+                    segment_time = datetime.fromisoformat(
+                        absolute_start_time.replace("Z", "+00:00")
+                    )
+                    if segment_time < resumed_at:
+                        logger.debug(
+                            "Skipping segment from before resume: %s < %s",
+                            absolute_start_time,
+                            resumed_at.isoformat(),
+                        )
+                        continue
+                except ValueError:
+                    pass
 
             speaker = segment_data.get("speaker", "Unknown")
             segment_id = generate_segment_id(
