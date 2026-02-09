@@ -122,6 +122,23 @@ class TranscriptionService:
                     )
                     self._subscribed_meetings.add(meeting_key)
                     logger.info("Successfully resubscribed to meeting: %s", meeting_key)
+
+                    if self.event_publisher:
+                        await self.event_publisher.publish(
+                            EventType.BOT_STATUS_CHANGED,
+                            {
+                                "platform": platform,
+                                "meeting_id": native_meeting_id,
+                                "playlist_id": metadata.playlist_id,
+                                "status": status,
+                                "recovered": True,
+                            },
+                        )
+                        logger.info(
+                            "Published recovery status for meeting %s: %s",
+                            meeting_key,
+                            status,
+                        )
                 except Exception as e:
                     logger.exception(
                         "Failed to resubscribe to meeting %s: %s", meeting_key, e

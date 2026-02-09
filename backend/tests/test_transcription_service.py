@@ -803,6 +803,90 @@ class TestResubscribeToActiveMeetings:
 
         assert "Providers not initialized" in caplog.text
 
+    @pytest.mark.asyncio
+    async def test_publishes_recovery_status_events(
+        self,
+        service,
+        mock_transcription_provider,
+        mock_storage_provider,
+        mock_event_publisher,
+        playlist_metadata,
+    ):
+        """Test that recovery publishes status events to WebSocket clients."""
+        mock_transcription_provider.get_active_bots.return_value = [
+            {
+                "platform": "google_meet",
+                "native_meeting_id": "abc-def-ghi",
+                "status": "in_meeting",
+                "meeting_id": 123,
+            }
+        ]
+        mock_storage_provider.get_playlist_metadata_by_meeting_id.return_value = (
+            playlist_metadata
+        )
+
+        await service.resubscribe_to_active_meetings()
+
+        from dna.events import EventType
+
+        mock_event_publisher.publish.assert_called_once_with(
+            EventType.BOT_STATUS_CHANGED,
+            {
+                "platform": "google_meet",
+                "meeting_id": "abc-def-ghi",
+                "playlist_id": 42,
+                "status": "in_meeting",
+                "recovered": True,
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_publishes_recovery_status_for_each_active_bot(
+        self,
+        service,
+        mock_transcription_provider,
+        mock_storage_provider,
+        mock_event_publisher,
+    ):
+        """Test that recovery publishes status for each active bot."""
+        metadata1 = PlaylistMetadata(
+            _id="meta1",
+            playlist_id=42,
+            in_review=5,
+            meeting_id="abc-def-ghi",
+            platform="google_meet",
+            vexa_meeting_id=123,
+        )
+        metadata2 = PlaylistMetadata(
+            _id="meta2",
+            playlist_id=43,
+            in_review=6,
+            meeting_id="123456789",
+            platform="zoom",
+            vexa_meeting_id=456,
+        )
+
+        mock_transcription_provider.get_active_bots.return_value = [
+            {
+                "platform": "google_meet",
+                "native_meeting_id": "abc-def-ghi",
+                "status": "in_meeting",
+            },
+            {
+                "platform": "zoom",
+                "native_meeting_id": "123456789",
+                "status": "waiting",
+            },
+        ]
+        mock_storage_provider.get_playlist_metadata_by_meeting_id.side_effect = [
+            metadata1,
+            metadata2,
+        ]
+
+        await service.resubscribe_to_active_meetings()
+
+        assert mock_event_publisher.publish.call_count == 2
+
 
 class TestSegmentIdGeneration:
     """Tests for segment ID generation consistency."""

@@ -7,7 +7,7 @@ from typing import Annotated, Optional, cast
 from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from dna.events import get_event_publisher
+from dna.events import EventType, get_event_publisher
 from dna.llm_providers.default_prompt import DEFAULT_PROMPT
 from dna.llm_providers.llm_provider_base import LLMProviderBase, get_llm_provider
 from dna.models import (
@@ -923,6 +923,18 @@ async def dispatch_bot(
             playlist_id=request.playlist_id,
         )
 
+        event_publisher = get_event_publisher()
+        await event_publisher.publish(
+            EventType.BOT_STATUS_CHANGED,
+            {
+                "platform": request.platform.value,
+                "meeting_id": request.meeting_id,
+                "playlist_id": request.playlist_id,
+                "status": "dispatching",
+                "vexa_meeting_id": session.vexa_meeting_id,
+            },
+        )
+
         return session
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -942,6 +954,16 @@ async def stop_bot(
 ) -> bool:
     """Stop a transcription bot."""
     try:
+        event_publisher = get_event_publisher()
+        await event_publisher.publish(
+            EventType.BOT_STATUS_CHANGED,
+            {
+                "platform": platform.value,
+                "meeting_id": meeting_id,
+                "status": "stopping",
+            },
+        )
+
         return await transcription_provider.stop_bot(platform, meeting_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
