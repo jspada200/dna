@@ -23,6 +23,11 @@ class PlaylistMetadataUpdate(BaseModel):
     transcription_paused: Optional[bool] = Field(
         default=None, description="Whether transcription storage is paused"
     )
+    clear_resumed_at: bool = Field(
+        default=False,
+        description="If True, clears transcription_resumed_at. "
+        "Used when starting a new transcription session.",
+    )
 
 
 class PlaylistMetadata(BaseModel):

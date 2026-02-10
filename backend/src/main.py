@@ -914,6 +914,8 @@ async def dispatch_bot(
                 meeting_id=request.meeting_id,
                 platform=request.platform.value,
                 vexa_meeting_id=session.vexa_meeting_id,
+                transcription_paused=False,
+                clear_resumed_at=True,
             ),
         )
 

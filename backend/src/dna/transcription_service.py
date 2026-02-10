@@ -1,7 +1,7 @@
 """Transcription service for managing Vexa subscriptions and segment processing."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from dna.events import EventPublisher, EventType, get_event_publisher
@@ -266,11 +266,14 @@ class TranscriptionService:
                     segment_time = datetime.fromisoformat(
                         absolute_start_time.replace("Z", "+00:00")
                     )
-                    if segment_time < resumed_at:
+                    resumed_at_aware = resumed_at
+                    if resumed_at.tzinfo is None:
+                        resumed_at_aware = resumed_at.replace(tzinfo=timezone.utc)
+                    if segment_time < resumed_at_aware:
                         logger.debug(
                             "Skipping segment from before resume: %s < %s",
                             absolute_start_time,
-                            resumed_at.isoformat(),
+                            resumed_at_aware.isoformat(),
                         )
                         continue
                 except ValueError:
