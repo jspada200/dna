@@ -932,7 +932,7 @@ async def dispatch_bot(
                 "platform": request.platform.value,
                 "meeting_id": request.meeting_id,
                 "playlist_id": request.playlist_id,
-                "status": "dispatching",
+                "status": "joining",
                 "vexa_meeting_id": session.vexa_meeting_id,
             },
         )
