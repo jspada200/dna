@@ -37,4 +37,4 @@ dmypy.json
 .DS_Store
 
 # Local environment files
-docker-compose.local.yml
+docker-compose.local*
