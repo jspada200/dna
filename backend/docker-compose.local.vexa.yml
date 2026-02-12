@@ -1,5 +1,0 @@
-services:
-  vexa:
-    environment:
-      - TRANSCRIBER_API_KEY=Ovlykv20X5bGKgxrKAMNrjxbcYzU4irGK6aLy1HPiyo
-      - TRANSCRIBER_URL=https://transcription.vexa.ai/v1/audio/transcriptions
