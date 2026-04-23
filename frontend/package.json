@@ -21,6 +21,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,json,css,md}\""
   },
   "devDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.60.2",
+    "@swc/core-linux-x64-gnu": "^1.15.30",
     "prettier": "^3.4.2",
     "typescript": "^5.9.3"
   },
