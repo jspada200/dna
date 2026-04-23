@@ -51,7 +51,7 @@ export function useAISuggestion({
         }
   );
 
-  const { data: userSettings } = useQuery<UserSettings | null>({
+  const { data: userSettings } = useQuery<UserSettings>({
     queryKey: ['userSettings', userEmail],
     queryFn: () => apiHandler.getUserSettings({ userEmail: userEmail! }),
     enabled: isEnabled,
