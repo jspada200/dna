@@ -524,6 +524,7 @@ export function SettingsModal({
   });
 
   const mutation = useMutation({
+    mutationKey: ['upsertUserSettings', userEmail],
     mutationFn: (data: UserSettingsUpdate) =>
       apiHandler.upsertUserSettings({ userEmail, data }),
     onSuccess: () => {
