@@ -277,7 +277,20 @@ const EditorContent_ = styled(EditorContent)`
     }
 
     strong {
-      font-weight: 600;
+      font-weight: 700;
+      color: ${({ theme }) => theme.colors.text.primary};
+    }
+
+    em {
+      font-style: italic;
+      color: ${({ theme }) => theme.colors.text.secondary};
+    }
+
+    strong em,
+    em strong {
+      font-weight: 700;
+      font-style: italic;
+      color: ${({ theme }) => theme.colors.text.primary};
     }
 
     code {
