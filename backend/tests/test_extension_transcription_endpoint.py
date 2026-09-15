@@ -7,6 +7,7 @@ Covers:
 """
 
 import os
+from contextlib import contextmanager
 from unittest import mock
 
 import main
@@ -23,6 +24,20 @@ from dna.transcription_service import (
 )
 
 ENABLE = {"DNA_ENABLE_EXTENSION_TRANSCRIPTION": "true"}
+
+
+@contextmanager
+def _extension_enabled(**extra):
+    """Enable extension transcription for a test.
+
+    ``make test`` runs via docker-compose.local.yml which sets DNA_EXTENSION_KEY,
+    so tests that expect an open gate must explicitly unset it unless they pass
+    DNA_EXTENSION_KEY in ``extra``.
+    """
+    with mock.patch.dict(os.environ, {**ENABLE, **extra}, clear=False):
+        if "DNA_EXTENSION_KEY" not in extra:
+            os.environ.pop("DNA_EXTENSION_KEY", None)
+        yield
 
 
 def _seg(**overrides):
@@ -89,7 +104,7 @@ class TestExtensionIngestWebSocket:
         _, storage = self._prepare_service(metadata)
         client = TestClient(app)
 
-        with mock.patch.dict(os.environ, ENABLE):
+        with _extension_enabled():
             with client.websocket_connect("/ws") as ws_broadcast:
                 with client.websocket_connect(
                     "/transcription/extension/ingest?token=user@test.com"
@@ -124,7 +139,7 @@ class TestExtensionIngestWebSocket:
         self._prepare_service(metadata)
         client = TestClient(app)
 
-        with mock.patch.dict(os.environ, ENABLE):
+        with _extension_enabled():
             with client.websocket_connect("/transcription/extension/ingest") as ingest:
                 ingest.receive_json()  # connected
                 ingest.send_json({"type": "ping", "ts": "t1"})
@@ -136,7 +151,7 @@ class TestExtensionIngestWebSocket:
         self._prepare_service(metadata)
         client = TestClient(app)
 
-        with mock.patch.dict(os.environ, ENABLE):
+        with _extension_enabled():
             with client.websocket_connect("/transcription/extension/ingest") as ingest:
                 ingest.receive_json()  # connected
 
@@ -153,7 +168,7 @@ class TestExtensionIngestWebSocket:
         metadata = PlaylistMetadata(_id="m", playlist_id=42, in_review=7)
         self._prepare_service(metadata)
         client = TestClient(app)
-        with mock.patch.dict(os.environ, {**ENABLE, "DNA_EXTENSION_KEY": "secret"}):
+        with _extension_enabled(DNA_EXTENSION_KEY="secret"):
             with pytest.raises(WebSocketDisconnect):
                 with client.websocket_connect(
                     "/transcription/extension/ingest?token=user@test.com"
@@ -164,7 +179,7 @@ class TestExtensionIngestWebSocket:
         metadata = PlaylistMetadata(_id="m", playlist_id=42, in_review=7)
         self._prepare_service(metadata)
         client = TestClient(app)
-        with mock.patch.dict(os.environ, {**ENABLE, "DNA_EXTENSION_KEY": "secret"}):
+        with _extension_enabled(DNA_EXTENSION_KEY="secret"):
             with pytest.raises(WebSocketDisconnect):
                 with client.websocket_connect(
                     "/transcription/extension/ingest?token=user@test.com&key=nope"
@@ -175,7 +190,7 @@ class TestExtensionIngestWebSocket:
         metadata = PlaylistMetadata(_id="m", playlist_id=42, in_review=7)
         self._prepare_service(metadata)
         client = TestClient(app)
-        with mock.patch.dict(os.environ, {**ENABLE, "DNA_EXTENSION_KEY": "secret"}):
+        with _extension_enabled(DNA_EXTENSION_KEY="secret"):
             with client.websocket_connect(
                 "/transcription/extension/ingest?token=user@test.com&key=secret"
             ) as ingest:
@@ -192,7 +207,7 @@ class TestExtensionIngestWebSocket:
         )
         client = TestClient(app)
 
-        with mock.patch.dict(os.environ, ENABLE):
+        with _extension_enabled():
             with client.websocket_connect("/transcription/extension/ingest") as ingest:
                 ingest.receive_json()  # connected
                 ingest.send_json({"type": "transcript", "playlist_id": 42})

@@ -129,7 +129,7 @@ default_note_prompt:
 
     7) Formatting:
     - Always format the note in the following format:
-    <department (pipeline step derived from task)> | <Asset/Shot> | <ALL assigned user(s) assigned to the task>
+    <department (pipeline step derived from task)> | <Asset/Shot> | <ALL assigned user(s) assigned to the task>\n
     <the note you are generating>
 
     Example Note:

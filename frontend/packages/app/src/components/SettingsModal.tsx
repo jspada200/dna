@@ -1064,14 +1064,12 @@ export function SettingsModal({
   );
 
   const handleSave = useCallback(() => {
-    // Persist an empty string when the value matches the deployment default so
-    // the setting continues to track future changes to that default.
-    const toPersisted = (current: string, fallback: string): string => {
-      const trimmed = current.trim();
-      return trimmed === '' || trimmed === fallback.trim() ? '' : current;
-    };
+    const defaultTrimmed = (settings?.default_note_prompt ?? '').trim();
+    const currentTrimmed = notePrompt.trim();
+    const persistAsDefault =
+      currentTrimmed === '' || currentTrimmed === defaultTrimmed;
     mutation.mutate({
-      note_prompt: toPersisted(notePrompt, settings?.default_note_prompt ?? ''),
+      note_prompt: persistAsDefault ? '' : notePrompt,
       regenerate_on_version_change: regenerateOnVersionChange,
       regenerate_on_transcript_update: regenerateOnTranscriptUpdate,
       sync_prodtrack_tab_on_version_change: syncProdtrackTabOnVersionChange,
