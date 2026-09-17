@@ -23,6 +23,10 @@ FRONTEND_ENV="$FRONTEND_DIR/packages/app/.env"
 VEXA_ADMIN_URL="http://localhost:8056"
 VEXA_ADMIN_TOKEN="your-admin-token"
 VEXA_LOCAL_EMAIL="dna-local@example.com"
+# Set to "true" when the user chooses hosted Vexa (api.cloud.vexa.ai); the
+# local Vexa container and transcription-backend setup are then skipped.
+VEXA_HOSTED=false
+VEXA_CLOUD_URL="https://api.cloud.vexa.ai"
 
 # Set by choose_transcription_route: "vexa" (default) or "extension"
 TRANSCRIPTION_ROUTE="vexa"
@@ -224,15 +228,46 @@ configure_llm() {
     echo "  (Press Enter on any prompt to skip and fill in manually later)"
     echo ""
     echo "  1) OpenAI  (default)"
-    echo "  2) Gemini"
-    echo "  3) Skip"
+    echo "  2) Anthropic (Claude)"
+    echo "  3) Gemini"
+    echo "  4) Custom  (OpenAI-compatible)"
+    echo "  5) Skip"
     echo ""
     read -r -p "  Choice [1]: " llm_choice
     llm_choice="${llm_choice:-1}"
     echo ""
 
     case "$llm_choice" in
-        2|[gG]emini)
+        2|[aA]nthropic|[cC]laude)
+            read -r -p "  Anthropic API key: " anthropic_key
+            if [[ -n "$anthropic_key" ]]; then
+                # The example file has an OPENAI_API_KEY line; replace it with
+                # the Anthropic key and insert LLM_PROVIDER=anthropic above it.
+                python3 - "$BACKEND_DIR/docker-compose.local.yml" "$anthropic_key" <<'PYEOF'
+import sys
+
+path, key = sys.argv[1], sys.argv[2]
+with open(path) as f:
+    lines = f.readlines()
+out = []
+for line in lines:
+    stripped = line.lstrip()
+    if stripped.startswith('- OPENAI_API_KEY='):
+        indent = line[: len(line) - len(stripped)]
+        out.append(f"{indent}- LLM_PROVIDER=anthropic\n")
+        out.append(f"{indent}- ANTHROPIC_API_KEY={key}\n")
+        out.append(f"{indent}- ANTHROPIC_MODEL=claude-opus-4-8\n")
+    else:
+        out.append(line)
+with open(path, 'w') as f:
+    f.writelines(out)
+PYEOF
+                ok "Anthropic API key written to backend/docker-compose.local.yml"
+            else
+                warn "Skipped — set ANTHROPIC_API_KEY and LLM_PROVIDER=anthropic in backend/docker-compose.local.yml"
+            fi
+            ;;
+        3|[gG]emini)
             read -r -p "  Gemini API key: " gemini_key
             if [[ -n "$gemini_key" ]]; then
                 # The example file has an OPENAI_API_KEY line; replace it with
@@ -260,7 +295,107 @@ PYEOF
                 warn "Skipped — set GEMINI_API_KEY and LLM_PROVIDER=gemini in backend/docker-compose.local.yml"
             fi
             ;;
-        3|[sS]kip)
+        4|[cC]ustom)
+            local default_url="http://host.docker.internal:11434/v1"
+            local default_model="llama3.2:latest"
+
+            read -r -p "  Custom LLM URL [${default_url}]: " custom_url
+            custom_url="${custom_url:-$default_url}"
+
+            # Warn if the URL uses localhost as hostname
+            if [[ "$custom_url" =~ localhost ]]; then
+                warn "URL uses 'localhost' — this will not work from a Docker container."
+                warn "Use 'host.docker.internal' to refer to the Docker host from within a container."
+                warn "  Example: ${default_url}"
+            fi
+
+            read -r -p "  Custom LLM model [${default_model}]: " custom_model
+            custom_model="${custom_model:-$default_model}"
+
+            read -r -p "  Custom LLM API key required? (y/N): " api_key_required
+            api_key_required="${api_key_required:-n}"
+
+            local custom_api_key=""
+            if [[ "$api_key_required" =~ ^[yY]([eE][sS])?$ ]]; then
+                read -r -p "  Custom LLM API key: " custom_api_key
+            fi
+
+            # Detect OS and handle extra_hosts for Linux
+            local os_type
+            os_type="$(uname -s)"
+            local needs_extra_hosts=false
+            if [[ "$os_type" == "Linux" ]] && [[ "$custom_url" =~ host\.docker\.internal ]]; then
+                needs_extra_hosts=true
+            fi
+
+            python3 - "$BACKEND_DIR/docker-compose.local.yml" "$custom_url" "$custom_model" "$custom_api_key" "$needs_extra_hosts" <<'PYEOF'
+import sys
+
+path, url, model, api_key, needs_extra_hosts = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5] == "true"
+with open(path) as f:
+    lines = f.readlines()
+
+out = []
+for line in lines:
+    stripped = line.lstrip()
+    if stripped.startswith('- OPENAI_API_KEY='):
+        indent = line[: len(line) - len(stripped)]
+        out.append(f"{indent}- LLM_PROVIDER=custom\n")
+        out.append(f"{indent}- CUSTOM_LLM_URL={url}\n")
+        out.append(f"{indent}- CUSTOM_LLM_MODEL={model}\n")
+        if api_key:
+            out.append(f"{indent}- CUSTOM_LLM_API_KEY={api_key}\n")
+    else:
+        out.append(line)
+
+if needs_extra_hosts:
+    # Find the environment block and add extra_hosts after the last env var
+    new_lines = []
+    in_environment = False
+    environment_indent = ""
+    last_env_idx = -1
+    for i, line in enumerate(out):
+        stripped = line.lstrip()
+        if 'environment:' in stripped:
+            in_environment = True
+            environment_indent = line[: len(line) - len(stripped)]
+            new_lines.append(line)
+            continue
+        if in_environment:
+            if stripped.startswith('- ') and '=' in stripped:
+                last_env_idx = len(new_lines)
+                new_lines.append(line)
+                continue
+            if stripped and not stripped.startswith('#'):
+                in_environment = False
+            if not stripped:
+                new_lines.append(line)
+                continue
+        new_lines.append(line)
+
+    if last_env_idx >= 0:
+        extra_indent = environment_indent + "  "
+        new_lines.insert(last_env_idx + 1, f"{extra_indent}extra_hosts:\n")
+        new_lines.insert(last_env_idx + 2, f"{extra_indent}  - \"host.docker.internal:host-gateway\"\n")
+
+    with open(path, 'w') as f:
+        f.writelines(new_lines)
+else:
+    with open(path, 'w') as f:
+        f.writelines(out)
+PYEOF
+
+            if [[ -n "$custom_api_key" ]]; then
+                ok "Custom LLM configured in backend/docker-compose.local.yml (URL, model, and API key)"
+            else
+                ok "Custom LLM configured in backend/docker-compose.local.yml (URL and model)"
+            fi
+
+            if [[ "$needs_extra_hosts" == "true" ]]; then
+                ok "extra_hosts entry added for host.docker.internal (Linux detected)"
+            fi
+            ;;
+        5|[sS]kip)
             warn "Skipped — set your LLM API key in backend/docker-compose.local.yml"
             ;;
         *)
@@ -275,7 +410,7 @@ PYEOF
     esac
 }
 
-# ── step 4: transcription route ───────────────────────────────────────────────
+# ── step 3.5: transcription route ─────────────────────────────────────────────
 
 choose_transcription_route() {
     echo ""
@@ -297,6 +432,42 @@ choose_transcription_route() {
             ;;
         *)
             TRANSCRIPTION_ROUTE="vexa"
+            ;;
+    esac
+}
+
+# ── step 3.6: Vexa deployment (self-hosted vs hosted cloud) ───────────────────
+
+configure_vexa() {
+    echo ""
+    echo -e "${BOLD}Vexa setup${NC}"
+    echo "  Vexa provides the meeting bot and transcription that DNA consumes."
+    echo ""
+    echo -e "  1) Self-hosted Vexa  ${BOLD}(default — runs locally in Docker)${NC}"
+    echo "  2) Hosted Vexa  (api.cloud.vexa.ai)"
+    echo ""
+    read -r -p "  Choice [1]: " vexa_choice
+    vexa_choice="${vexa_choice:-1}"
+    echo ""
+
+    case "$vexa_choice" in
+        2|[hH]osted|[cC]loud)
+            VEXA_HOSTED=true
+            set_env_var "VEXA_API_URL" "$VEXA_CLOUD_URL" \
+                "$BACKEND_DIR/docker-compose.local.yml"
+            ok "Vexa API URL set to ${VEXA_CLOUD_URL}"
+            read -r -p "  Vexa cloud API key (from https://www.vexa.ai, or Enter to skip): " vexa_cloud_key
+            if [[ -n "$vexa_cloud_key" ]]; then
+                set_env_var "VEXA_API_KEY" "$vexa_cloud_key" \
+                    "$BACKEND_DIR/docker-compose.local.yml"
+                ok "Vexa cloud API key written to backend/docker-compose.local.yml"
+            else
+                warn "Skipped — set VEXA_API_KEY in backend/docker-compose.local.yml"
+            fi
+            info "Local Vexa container and transcription-backend setup will be skipped."
+            ;;
+        *)
+            VEXA_HOSTED=false
             ;;
     esac
 }
@@ -348,7 +519,7 @@ configure_extension_transcription() {
     fi
 }
 
-# ── step 4b: Vexa transcription service setup ─────────────────────────────────
+# ── step 4: transcription service setup ───────────────────────────────────────
 
 # Append SKIP_TRANSCRIPTION_CHECK=true to docker-compose.local.vexa.yml so
 # Vexa starts even without a working transcription backend.
@@ -384,7 +555,7 @@ configure_transcription() {
     echo "  Vexa needs an OpenAI Whisper-compatible transcription backend."
     echo ""
     echo -e "  1) Remote service via vexa.ai  ${BOLD}(recommended — free tier available)${NC}"
-    echo "     Get a free key at: https://staging.vexa.ai/dashboard/transcription"
+    echo "     Get a free key at: https://cal.com/dmitrygrankin/web?duration=15"
     echo ""
     echo "  2) Self-hosted transcription service"
     echo "     Requires Docker (GPU recommended). Setup guide:"
@@ -425,7 +596,7 @@ configure_transcription() {
             add_skip_transcription_check
             ;;
         *)
-            echo "  Get your free key at: https://staging.vexa.ai/dashboard/transcription"
+            echo "  Get your free key at: https://cal.com/dmitrygrankin/web?duration=15"
             echo ""
             read -r -p "  Transcription API key (press Enter to skip): " trans_key
             if [[ -n "$trans_key" ]]; then
@@ -658,10 +829,33 @@ start_full_stack() {
     if [[ "$route" == "extension" ]]; then
         info "Starting the DNA stack with WhisperLive (no Vexa — first run may take a few minutes)..."
         (cd "$BACKEND_DIR" && make start-local-extension-detached)
-    else
-        info "Starting the full DNA stack (first run builds containers — this may take a few minutes)..."
-        (cd "$BACKEND_DIR" && make start-local-vexa-detached)
+        ok "All services started"
+        return
     fi
+
+    local compose_cmd
+    compose_cmd="$(get_compose_cmd)"
+
+    # Re-derive hosting from the configured API URL so --start (which skips the
+    # interactive prompts) starts the right set of containers.
+    if grep -qF "VEXA_API_URL=${VEXA_CLOUD_URL}" \
+            "$BACKEND_DIR/docker-compose.local.yml" 2>/dev/null; then
+        VEXA_HOSTED=true
+    fi
+
+    # Hosted Vexa runs no local vexa/vexa-db/vexa-dashboard containers, so omit
+    # the Vexa compose files entirely (order otherwise matches the original).
+    local -a compose_files=(-f docker-compose.yml)
+    [[ "$VEXA_HOSTED" != "true" ]] && compose_files+=(-f docker-compose.vexa.yml)
+    compose_files+=(-f docker-compose.debug.yml -f docker-compose.local.yml)
+    [[ "$VEXA_HOSTED" != "true" ]] && compose_files+=(-f docker-compose.local.vexa.yml)
+
+    info "Starting the full DNA stack (first run builds containers — this may take a few minutes)..."
+    (
+        cd "$BACKEND_DIR"
+        $compose_cmd "${compose_files[@]}" \
+            up --build -d --force-recreate --remove-orphans
+    )
     ok "All services started"
 }
 
@@ -699,6 +893,8 @@ print_summary() {
     echo "    API Docs     →  http://localhost:8000/docs"
     if [[ "$route" == "extension" ]]; then
         echo "    WhisperLive  →  ws://localhost:9090"
+    elif [[ "$VEXA_HOSTED" == "true" ]]; then
+        echo "    Vexa         →  ${VEXA_CLOUD_URL} (hosted)"
     else
         echo "    Vexa Admin   →  http://localhost:3001"
     fi
@@ -744,12 +940,21 @@ print_summary() {
         echo "    backend/docker-compose.local.yml"
         echo ""
     fi
-    if [[ "$route" == "vexa" ]] && grep -q 'TRANSCRIBER_API_KEY=\*\*' \
+    if [[ "$VEXA_HOSTED" == "true" ]]; then
+        if grep -q 'VEXA_API_KEY=\*\*' \
+                "$BACKEND_DIR/docker-compose.local.yml" 2>/dev/null; then
+            needs_attention=true
+            echo -e "  ${YELLOW}Action needed:${NC} fill in your hosted Vexa API key in:"
+            echo "    backend/docker-compose.local.yml  (VEXA_API_KEY)"
+            echo "  Get a key at: https://www.vexa.ai"
+            echo ""
+        fi
+    elif [[ "$route" == "vexa" ]] && grep -q 'TRANSCRIBER_API_KEY=\*\*' \
             "$BACKEND_DIR/docker-compose.local.vexa.yml" 2>/dev/null; then
         needs_attention=true
         echo -e "  ${YELLOW}Action needed:${NC} fill in your transcription API key in:"
         echo "    backend/docker-compose.local.vexa.yml"
-        echo "  Get a free key at: https://staging.vexa.ai/dashboard/transcription"
+        echo "  Get a free key at: https://cal.com/dmitrygrankin/web?duration=15"
         echo ""
     fi
     if [[ "$route" == "extension" ]] && ! grep -qE '^VITE_TRANSCRIPTION_EXTENSION_ID=[^[:space:]]+$' \
@@ -803,17 +1008,20 @@ main() {
         if [[ "$TRANSCRIPTION_ROUTE" == "extension" ]]; then
             configure_extension_transcription
         else
-            configure_transcription
+            configure_vexa
+            if [[ "$VEXA_HOSTED" != "true" ]]; then
+                configure_transcription
+            fi
         fi
         configure_prodtrack
         configure_feature_flags
         install_frontend
         echo ""
-        if [[ "$TRANSCRIPTION_ROUTE" == "vexa" ]]; then
+        if [[ "$TRANSCRIPTION_ROUTE" == "extension" ]]; then
+            info "Skipping Vexa bootstrap (browser-extension transcription route)"
+        elif [[ "$VEXA_HOSTED" != "true" ]]; then
             bootstrap_vexa
             echo ""
-        else
-            info "Skipping Vexa bootstrap (browser-extension transcription route)"
         fi
         start_full_stack "$TRANSCRIPTION_ROUTE"
         echo ""

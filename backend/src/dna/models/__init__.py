@@ -4,6 +4,7 @@ Pydantic models for DNA entities.
 """
 
 from dna.models.draft_note import (
+    SCRATCH_VERSION_ID,
     DraftNote,
     DraftNoteBase,
     DraftNoteCreate,
@@ -48,7 +49,9 @@ from dna.models.qc_check import (
     RunQCChecksResponse,
 )
 from dna.models.requests import (
+    AddVersionToPlaylistRequest,
     CreateNoteRequest,
+    CreatePlaylistRequest,
     EntityLink,
     FilterCondition,
     FindRequest,
@@ -62,6 +65,8 @@ from dna.models.requests import (
     SearchRequest,
     SearchResult,
     StatusOption,
+    UpdateVersionStatusRequest,
+    UpdateVersionStatusResponse,
 )
 from dna.models.stored_segment import (
     StoredSegment,
@@ -83,6 +88,7 @@ from dna.models.user_settings import (
 from dna.models.user_settings_response import UserSettingsResponse
 
 __all__ = [
+    "AddVersionToPlaylistRequest",
     "EntityBase",
     "Project",
     "Shot",
@@ -97,6 +103,7 @@ __all__ = [
     "ENTITY_MODELS",
     "EntityLink",
     "CreateNoteRequest",
+    "CreatePlaylistRequest",
     "FilterCondition",
     "FindRequest",
     "GenerateNoteRequest",
@@ -109,6 +116,9 @@ __all__ = [
     "PublishNotesResponse",
     "PublishTranscriptRequest",
     "PublishTranscriptResponse",
+    "UpdateVersionStatusRequest",
+    "UpdateVersionStatusResponse",
+    "SCRATCH_VERSION_ID",
     "DraftNote",
     "DraftNoteBase",
     "DraftNoteCreate",

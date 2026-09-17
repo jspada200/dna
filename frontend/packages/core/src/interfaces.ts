@@ -143,6 +143,13 @@ export interface GetUserByEmailParams {
   userEmail: string;
 }
 
+/**
+ * Sentinel version_id for a playlist-level "scratch" note: the draft belongs
+ * to the playlist itself rather than any version, and publishes as a note
+ * linked only to the Playlist entity.
+ */
+export const SCRATCH_VERSION_ID = -1;
+
 export interface DraftNoteLink {
   entity_type: string;
   entity_id: number;
@@ -210,6 +217,7 @@ export interface PlaylistMetadata {
   meeting_id: string | null;
   platform: Platform | null;
   transcription_paused: boolean;
+  has_scratch: boolean;
 }
 
 export interface PlaylistMetadataUpdate {
@@ -217,6 +225,7 @@ export interface PlaylistMetadataUpdate {
   meeting_id?: string | null;
   platform?: Platform | null;
   transcription_paused?: boolean;
+  has_scratch?: boolean;
 }
 
 export interface GetPlaylistMetadataParams {
@@ -337,6 +346,7 @@ export interface UserSettings {
   note_prompt: string;
   /** Configured default prompt template (for display when note_prompt is empty). */
   default_note_prompt: string;
+  preferred_model: string;
   regenerate_on_version_change: boolean;
   regenerate_on_transcript_update: boolean;
   sync_prodtrack_tab_on_version_change: boolean;
@@ -347,6 +357,7 @@ export interface UserSettings {
 
 export interface UserSettingsUpdate {
   note_prompt?: string;
+  preferred_model?: string;
   regenerate_on_version_change?: boolean;
   regenerate_on_transcript_update?: boolean;
   sync_prodtrack_tab_on_version_change?: boolean;
@@ -389,6 +400,13 @@ export interface GenerateNoteParams {
   versionId: number;
   userEmail: string;
   additionalInstructions?: string;
+  model?: string;
+}
+
+export interface AvailableModelsResponse {
+  provider: string;
+  models: string[];
+  default: string;
 }
 
 export interface GenerateNoteResponse {
@@ -450,6 +468,17 @@ export interface SearchEntitiesParams {
   limit?: number;
 }
 
+export interface AddVersionToPlaylistParams {
+  playlistId: number;
+  /** ID of an existing version to add */
+  versionId: number;
+}
+
+export interface CreatePlaylistParams {
+  projectId: number;
+  name: string;
+}
+
 // Status types for version status dropdown
 export interface StatusOption {
   code: string;
@@ -468,6 +497,12 @@ export interface PublishNoteTarget {
 export interface PublishNotesRequest {
   user_email: string;
   targets: PublishNoteTarget[];
+  /**
+   * If provided, draft version_status changes are applied only for these
+   * version ids. Pass [] to suppress status side effects entirely (statuses
+   * are then published separately via updateVersionStatus).
+   */
+  status_version_ids?: number[];
 }
 
 export interface PublishNotesResponse {
@@ -481,6 +516,20 @@ export interface PublishNotesResponse {
 export interface PublishNotesParams {
   playlistId: number;
   request: PublishNotesRequest;
+}
+
+export interface UpdateVersionStatusParams {
+  versionId: number;
+  status: string;
+  /**
+   * When set, pending version_status values on this playlist's draft notes
+   * for the version are cleared server-side after the update.
+   */
+  playlistId?: number;
+}
+
+export interface UpdateVersionStatusResponse {
+  success: boolean;
 }
 
 export interface PublishTranscriptRequest {

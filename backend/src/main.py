@@ -33,10 +33,13 @@ from dna.glossary_config import (
 )
 from dna.llm_providers.llm_provider_base import LLMProviderBase, get_llm_provider
 from dna.models import (
+    SCRATCH_VERSION_ID,
+    AddVersionToPlaylistRequest,
     Asset,
     BotSession,
     BotStatus,
     CreateNoteRequest,
+    CreatePlaylistRequest,
     DispatchBotRequest,
     DraftNote,
     DraftNoteUpdate,
@@ -68,6 +71,8 @@ from dna.models import (
     StoredSegment,
     Task,
     Transcript,
+    UpdateVersionStatusRequest,
+    UpdateVersionStatusResponse,
     User,
     UserSettings,
     UserSettingsResponse,
@@ -766,6 +771,34 @@ async def get_version_statuses(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.patch(
+    "/versions/{version_id}/status",
+    tags=["Versions"],
+    summary="Update a version's status",
+    description="Set the status of a version in the production tracking system.",
+    response_model=UpdateVersionStatusResponse,
+)
+async def update_version_status(
+    version_id: int,
+    request: UpdateVersionStatusRequest,
+    provider: ProdtrackProviderDep,
+    storage: StorageProviderDep,
+    _: CurrentUserDep,
+) -> UpdateVersionStatusResponse:
+    """Update the status of a version without publishing a note."""
+    try:
+        success = provider.update_version_status(version_id, request.status)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not success:
+        raise HTTPException(status_code=502, detail="Failed to update version status")
+    if request.playlist_id is not None:
+        # Pending draft status intents for this version are fulfilled or
+        # obsolete now; clear them without touching note publish state.
+        await storage.clear_draft_version_status(request.playlist_id, version_id)
+    return UpdateVersionStatusResponse(success=True)
+
+
 # -----------------------------------------------------------------------------
 # User endpoints
 # -----------------------------------------------------------------------------
@@ -823,6 +856,29 @@ async def get_playlists_for_project(
     """Get playlists for a project."""
     try:
         return provider.get_playlists_for_project(project_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post(
+    "/projects/{project_id}/playlists",
+    tags=["Playlists"],
+    summary="Create a playlist",
+    description="Create a new playlist in the production tracking system.",
+    response_model=Playlist,
+)
+async def create_playlist(
+    project_id: int,
+    request: CreatePlaylistRequest,
+    provider: ProdtrackProviderDep,
+    _: CurrentUserDep,
+) -> Playlist:
+    """Create a new playlist in a project."""
+    name = request.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Playlist name is required")
+    try:
+        return provider.create_playlist(project_id, name)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -893,6 +949,28 @@ async def get_versions_for_playlist(
 
 
 @app.post(
+    "/playlists/{playlist_id}/versions",
+    tags=["Playlists"],
+    summary="Add a version to a playlist",
+    description="Add an existing version to a playlist.",
+    response_model=Version,
+)
+async def add_version_to_playlist(
+    playlist_id: int,
+    request: AddVersionToPlaylistRequest,
+    provider: ProdtrackProviderDep,
+    _: CurrentUserDep,
+) -> Version:
+    """Add an existing version to a playlist."""
+    try:
+        version = provider.get_entity("version", request.version_id, resolve_links=True)
+        provider.add_version_to_playlist(playlist_id, version.id)
+        return version
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post(
     "/playlists/{playlist_id}/publish-notes",
     tags=["Playlists"],
     summary="Publish draft notes",
@@ -937,6 +1015,17 @@ async def publish_notes(
     failed_count = 0
     skipped_count = 0
 
+    def _status_to_apply(note) -> Optional[str]:
+        """Version status to apply for this note, honoring the allowlist."""
+        if not note.version_status:
+            return None
+        if (
+            request.status_version_ids is not None
+            and note.version_id not in request.status_version_ids
+        ):
+            return None
+        return note.version_status
+
     from datetime import datetime, timezone
 
     def _upload_attachments(sg_note_id: int, attachment_ids: list[str]) -> None:
@@ -958,27 +1047,32 @@ async def publish_notes(
 
     for note in notes_to_publish:
         try:
+            # Scratch notes belong to the playlist itself: no version, so no
+            # version status to apply.
+            is_scratch = note.version_id == SCRATCH_VERSION_ID
+            status_to_apply = None if is_scratch else _status_to_apply(note)
+
             # Skip notes with no meaningful content to publish
             has_body = (note.content and note.content.strip()) or (
                 note.subject and note.subject.strip()
             )
-            if not has_body and not note.attachment_ids and not note.version_status:
+            if not has_body and not note.attachment_ids and not status_to_apply:
                 skipped_count += 1
                 continue
 
             # Status-only change with no note body: update version status without
             # creating or publishing a note, and do not mark the draft as published.
-            if not has_body and not note.attachment_ids and note.version_status:
-                prodtrack.update_version_status(note.version_id, note.version_status)
+            if not has_body and not note.attachment_ids and status_to_apply:
+                prodtrack.update_version_status(note.version_id, status_to_apply)
                 skipped_count += 1
                 continue
 
             if note.published_note_id:
                 if note.published and not note.edited and not note.attachment_ids:
                     # Still apply any pending version status change
-                    if note.version_status:
+                    if status_to_apply:
                         prodtrack.update_version_status(
-                            note.version_id, note.version_status
+                            note.version_id, status_to_apply
                         )
                     skipped_count += 1
                     continue
@@ -989,7 +1083,7 @@ async def publish_notes(
                         content=note.content,
                         subject=note.subject,
                         version_id=note.version_id,
-                        version_status=note.version_status or None,
+                        version_status=status_to_apply,
                     )
                     if not success:
                         failed_count += 1
@@ -1013,43 +1107,63 @@ async def publish_notes(
                 )
                 continue
 
-            # Get links
+            # Get links, skipping entities with sentinel ids (e.g. the scratch
+            # pseudo-version) that don't exist in the tracking system
             links = []
             if note.links:
                 for link in note.links:
+                    if link.entity_id <= 0:
+                        continue
                     model_class = ENTITY_MODELS.get(link.entity_type)
                     if model_class:
                         links.append(model_class(id=link.entity_id))
 
-            # Ensure playlist is included in links
-            playlist_link_exists = any(
-                isinstance(l, Playlist) and l.id == playlist_id for l in links
-            )
-            if not playlist_link_exists:
-                links.append(_create_stub_entity("Playlist", playlist_id))
-
-            # Ensure version's parent entity (Shot/Asset) is included in links
-            version = prodtrack.get_entity(
-                "version", note.version_id, resolve_links=False
-            )
-            if version and version.entity:
-                entity_link_exists = any(
-                    l.id == version.entity.id and l.type == version.entity.type
+            if is_scratch:
+                # The provider links the playlist itself; don't pass it twice
+                extra_links = [
+                    l
                     for l in links
+                    if not (isinstance(l, Playlist) and l.id == playlist_id)
+                ]
+                note_id = prodtrack.publish_playlist_note(
+                    playlist_id=playlist_id,
+                    content=note.content,
+                    subject=note.subject,
+                    to_users=[],
+                    cc_users=[],
+                    links=extra_links,
+                    author_email=note.user_email,
                 )
-                if not entity_link_exists:
-                    links.append(version.entity)
+            else:
+                # Ensure playlist is included in links
+                playlist_link_exists = any(
+                    isinstance(l, Playlist) and l.id == playlist_id for l in links
+                )
+                if not playlist_link_exists:
+                    links.append(_create_stub_entity("Playlist", playlist_id))
 
-            note_id = prodtrack.publish_note(
-                version_id=note.version_id,
-                content=note.content,
-                subject=note.subject,
-                to_users=[],  # TODO: Parse to/cc
-                cc_users=[],
-                links=links,
-                author_email=note.user_email,
-                version_status=note.version_status or None,
-            )
+                # Ensure version's parent entity (Shot/Asset) is included in links
+                version = prodtrack.get_entity(
+                    "version", note.version_id, resolve_links=False
+                )
+                if version and version.entity:
+                    entity_link_exists = any(
+                        l.id == version.entity.id and l.type == version.entity.type
+                        for l in links
+                    )
+                    if not entity_link_exists:
+                        links.append(version.entity)
+
+                note_id = prodtrack.publish_note(
+                    version_id=note.version_id,
+                    content=note.content,
+                    subject=note.subject,
+                    to_users=[],  # TODO: Parse to/cc
+                    cc_users=[],
+                    links=links,
+                    author_email=note.user_email,
+                    version_status=status_to_apply,
+                )
 
             if note.attachment_ids:
                 _upload_attachments(note_id, note.attachment_ids)
@@ -1475,6 +1589,7 @@ def _user_settings_to_response(settings: UserSettings) -> UserSettingsResponse:
         _id=settings.id,
         user_email=settings.user_email,
         note_prompt=settings.note_prompt,
+        preferred_model=settings.preferred_model,
         default_note_prompt=get_default_note_prompt(),
         regenerate_on_version_change=settings.regenerate_on_version_change,
         regenerate_on_transcript_update=settings.regenerate_on_transcript_update,
@@ -1496,6 +1611,7 @@ def _empty_user_settings_response(user_email: str) -> UserSettingsResponse:
         _id="",
         user_email=user_email,
         note_prompt="",
+        preferred_model="",
         default_note_prompt=default,
         regenerate_on_version_change=False,
         regenerate_on_transcript_update=False,
@@ -1984,6 +2100,20 @@ async def extension_transcription_ingest(websocket: WebSocket):
 # -----------------------------------------------------------------------------
 
 
+@app.get(
+    "/models",
+    tags=["LLM"],
+    summary="Get available LLM models",
+    description="Returns the list of models available from the active LLM provider.",
+)
+async def get_available_models(
+    llm_provider: LLMProviderDep,
+    _: CurrentUserDep,
+) -> dict:
+    """Get available models from the active LLM provider."""
+    return await llm_provider.get_available_models()
+
+
 def _build_full_prompt(
     prompt: str,
     transcript: str,
@@ -2071,12 +2201,17 @@ async def generate_note(
             glossary_project,
         )
 
+        model_override = request.model
+        if not model_override and user_settings:
+            model_override = user_settings.preferred_model or None
+
         suggestion = await llm_provider.generate_note(
             prompt=prompt,
             transcript=transcript,
             context=context,
             existing_notes=existing_notes,
             additional_instructions=request.additional_instructions,
+            model=model_override,
             glossary_global=glossary_global,
             glossary_project=glossary_project,
         )
