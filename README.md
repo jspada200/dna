@@ -4,6 +4,7 @@
 
 <img width="4801" height="2001" alt="ASWF_DNA Project Logo_Color_Dark_Without_BG" src="https://github.com/user-attachments/assets/db3d414b-367a-498c-b8aa-6b2b8495f35e" />
 
+[![OpenSSF Baseline](https://www.bestpractices.dev/projects/14644/baseline)](https://www.bestpractices.dev/projects/14644)
 
 Introduction: Dailies Notes Assistant (DNA)
 ===========================================
