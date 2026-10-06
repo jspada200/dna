@@ -1,5 +1,7 @@
 """FastAPI application entry point."""
 
+import hmac
+import logging
 import os
 import shutil
 import uuid
@@ -21,15 +23,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from dna.auth.email import emails_match
 from dna.auth_providers.auth_provider_base import AuthProviderBase, get_auth_provider
 from dna.cors_settings import get_cors_middleware_kwargs
 from dna.events import EventType, get_event_publisher
+from dna.glossary_config import (
+    get_default_glossary_global,
+    inject_glossaries,
+)
 from dna.llm_providers.llm_provider_base import LLMProviderBase, get_llm_provider
 from dna.models import (
+    SCRATCH_VERSION_ID,
+    AddVersionToPlaylistRequest,
     Asset,
     BotSession,
     BotStatus,
     CreateNoteRequest,
+    CreatePlaylistRequest,
     DispatchBotRequest,
     DraftNote,
     DraftNoteUpdate,
@@ -37,13 +47,23 @@ from dna.models import (
     GenerateNoteRequest,
     GenerateNoteResponse,
     Note,
+    NoteQCCheck,
+    NoteQCCheckCreate,
+    NoteQCCheckUpdate,
     Platform,
     Playlist,
     PlaylistMetadata,
     PlaylistMetadataUpdate,
     Project,
+    ProjectGlossary,
+    ProjectGlossaryUpdate,
+    PublishedTranscriptUpdate,
     PublishNotesRequest,
     PublishNotesResponse,
+    PublishTranscriptRequest,
+    PublishTranscriptResponse,
+    RunQCChecksRequest,
+    RunQCChecksResponse,
     SearchRequest,
     SearchResult,
     Shot,
@@ -51,6 +71,8 @@ from dna.models import (
     StoredSegment,
     Task,
     Transcript,
+    UpdateVersionStatusRequest,
+    UpdateVersionStatusResponse,
     User,
     UserSettings,
     UserSettingsResponse,
@@ -63,6 +85,7 @@ from dna.prodtrack_providers.prodtrack_provider_base import (
     ProdtrackProviderBase,
     get_prodtrack_provider,
 )
+from dna.qc.qc_runner import run_qc_checks_for_draft
 from dna.storage_providers.storage_provider_base import (
     StorageProviderBase,
     get_storage_provider,
@@ -72,6 +95,8 @@ from dna.transcription_providers.transcription_provider_base import (
     get_transcription_provider,
 )
 from dna.transcription_service import TranscriptionService, get_transcription_service
+
+logger = logging.getLogger(__name__)
 
 # API metadata for Swagger documentation
 API_TITLE = "DNA Backend"
@@ -129,6 +154,10 @@ tags_metadata = [
         "description": "Operations for managing notes",
     },
     {
+        "name": "Attachments",
+        "description": "Operations for staging file attachments for notes",
+    },
+    {
         "name": "Projects",
         "description": "Operations for managing projects",
     },
@@ -155,6 +184,10 @@ tags_metadata = [
     {
         "name": "User Settings",
         "description": "Operations for managing user settings and preferences",
+    },
+    {
+        "name": "Note QC",
+        "description": "User-defined LLM quality checks for draft notes at publish time",
     },
 ]
 
@@ -323,6 +356,10 @@ async def startup_event():
     """Initialize services on startup."""
     service = get_transcription_service()
     await service.init_providers()
+    storage = service.storage_provider
+    ensure_indexes = getattr(storage, "ensure_indexes", None)
+    if callable(ensure_indexes):
+        await ensure_indexes()
     await service.resubscribe_to_active_meetings()
 
 
@@ -362,6 +399,25 @@ async def health():
     return {"status": "healthy"}
 
 
+@app.post(
+    "/test/broadcast-transcript",
+    tags=["Testing"],
+    summary="Broadcast a synthetic transcript (dev-only).",
+    include_in_schema=False,
+)
+async def test_broadcast_transcript(payload: dict) -> dict:
+    """Dev-only endpoint for tests-vm/. Gated by DNA_TESTING_ENABLED=true.
+
+    Forwards the JSON body verbatim to every WebSocket client — lets us
+    assert the broadcast shape end-to-end without needing a real meeting.
+    """
+    if os.getenv("DNA_TESTING_ENABLED", "false").lower() not in ("1", "true", "yes"):
+        raise HTTPException(status_code=404, detail="Not found")
+    publisher = get_event_publisher()
+    await publisher.ws_manager.broadcast(payload)
+    return {"broadcasted": True, "clients": publisher.ws_manager.connection_count}
+
+
 MOCK_THUMBNAILS_DIR = (
     Path(__file__).parent / "dna" / "prodtrack_providers" / "mock_data" / "thumbnails"
 )
@@ -392,6 +448,26 @@ async def upload_attachment(
     with dest_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
     return {"id": attachment_id, "filename": filename}
+
+
+@app.get(
+    "/api/attachments/{attachment_id}",
+    tags=["Attachments"],
+    summary="Retrieve a staged attachment",
+    response_class=FileResponse,
+)
+async def get_attachment(attachment_id: str, _: CurrentUserDep) -> FileResponse:
+    """Return the image file for a staged attachment by ID."""
+    attachment_dir = ATTACHMENT_STORE_DIR / attachment_id
+    if not attachment_dir.exists():
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    files = list(attachment_dir.iterdir())
+    if not files:
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    path = files[0]
+    suffix = path.suffix.lower()
+    media_type = THUMBNAIL_MEDIA_TYPES.get(suffix, "application/octet-stream")
+    return FileResponse(path, media_type=media_type)
 
 
 @app.delete("/api/attachments/{attachment_id}", tags=["Attachments"])
@@ -433,12 +509,15 @@ async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time event streaming.
 
     Clients connect to this endpoint to receive real-time events such as:
-    - segment.created / segment.updated: Transcript segment changes
+    - transcript: Raw Vexa-shaped transcript ticks (flat envelope with
+      `speaker`, `confirmed`, `pending`, `playlist_id`, `version_id`, `ts`).
+      Consumed by the frontend `TranscriptManager`.
     - bot.status_changed: Bot status updates
     - transcription.completed / transcription.error: Transcription lifecycle events
 
-    Events are sent as JSON messages with the format:
-    {"type": "event.type", "payload": {...}}
+    Most events use `{"type": "event.type", "payload": {...}}`. The
+    `transcript` event is flat — the whole message IS the payload so it can
+    be fed to `TranscriptManager.handleMessage()` without reshaping.
     """
     event_publisher = get_event_publisher()
     ws_manager = event_publisher.ws_manager
@@ -698,6 +777,34 @@ async def get_version_statuses(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.patch(
+    "/versions/{version_id}/status",
+    tags=["Versions"],
+    summary="Update a version's status",
+    description="Set the status of a version in the production tracking system.",
+    response_model=UpdateVersionStatusResponse,
+)
+async def update_version_status(
+    version_id: str,
+    request: UpdateVersionStatusRequest,
+    provider: ProdtrackProviderDep,
+    storage: StorageProviderDep,
+    _: CurrentUserDep,
+) -> UpdateVersionStatusResponse:
+    """Update the status of a version without publishing a note."""
+    try:
+        success = provider.update_version_status(version_id, request.status)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not success:
+        raise HTTPException(status_code=502, detail="Failed to update version status")
+    if request.playlist_id is not None:
+        # Pending draft status intents for this version are fulfilled or
+        # obsolete now; clear them without touching note publish state.
+        await storage.clear_draft_version_status(request.playlist_id, version_id)
+    return UpdateVersionStatusResponse(success=True)
+
+
 # -----------------------------------------------------------------------------
 # User endpoints
 # -----------------------------------------------------------------------------
@@ -759,6 +866,77 @@ async def get_playlists_for_project(
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@app.post(
+    "/projects/{project_id}/playlists",
+    tags=["Playlists"],
+    summary="Create a playlist",
+    description="Create a new playlist in the production tracking system.",
+    response_model=Playlist,
+)
+async def create_playlist(
+    project_id: str,
+    request: CreatePlaylistRequest,
+    provider: ProdtrackProviderDep,
+    _: CurrentUserDep,
+) -> Playlist:
+    """Create a new playlist in a project."""
+    name = request.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Playlist name is required")
+    try:
+        return provider.create_playlist(project_id, name)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/projects/{project_id}/glossary",
+    tags=["Projects"],
+    summary="Get a project's glossary",
+    description=(
+        "Retrieve the production-specific glossary for a project. Returns an "
+        "empty glossary when none has been saved yet."
+    ),
+    response_model=ProjectGlossary,
+)
+async def get_project_glossary(
+    project_id: str,
+    provider: StorageProviderDep,
+    _: CurrentUserDep,
+) -> ProjectGlossary:
+    """Get a project's glossary (empty when not yet configured)."""
+    from datetime import datetime, timezone
+
+    stored = await provider.get_project_glossary(project_id)
+    if stored is None:
+        now = datetime.now(timezone.utc)
+        return ProjectGlossary(
+            _id="",
+            project_id=project_id,
+            content="",
+            updated_at=now,
+            created_at=now,
+        )
+    return stored
+
+
+@app.put(
+    "/projects/{project_id}/glossary",
+    tags=["Projects"],
+    summary="Create or update a project's glossary",
+    description="Save the production-specific glossary for a project.",
+    response_model=ProjectGlossary,
+)
+async def upsert_project_glossary(
+    project_id: str,
+    data: ProjectGlossaryUpdate,
+    provider: StorageProviderDep,
+    _: CurrentUserDep,
+) -> ProjectGlossary:
+    """Create or update a project's glossary."""
+    return await provider.upsert_project_glossary(project_id, data)
+
+
 @app.get(
     "/playlists/{playlist_id}/versions",
     tags=["Versions"],
@@ -772,6 +950,28 @@ async def get_versions_for_playlist(
     """Get versions for a playlist."""
     try:
         return provider.get_versions_for_playlist(playlist_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post(
+    "/playlists/{playlist_id}/versions",
+    tags=["Playlists"],
+    summary="Add a version to a playlist",
+    description="Add an existing version to a playlist.",
+    response_model=Version,
+)
+async def add_version_to_playlist(
+    playlist_id: str,
+    request: AddVersionToPlaylistRequest,
+    provider: ProdtrackProviderDep,
+    _: CurrentUserDep,
+) -> Version:
+    """Add an existing version to a playlist."""
+    try:
+        version = provider.get_entity("version", request.version_id, resolve_links=True)
+        provider.add_version_to_playlist(playlist_id, version.id)
+        return version
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -803,13 +1003,14 @@ async def publish_notes(
         key = (note.user_email, note.version_id)
         notes_by_key[key].append(note)
 
+    target_keys = {(t.user_email, t.version_id) for t in request.targets}
+
     notes_to_publish = []
     for key, notes in notes_by_key.items():
         # Sort by updated_at descending and take the most recent one
         most_recent = max(notes, key=lambda n: n.updated_at)
 
-        # specific user check
-        if not request.include_others and most_recent.user_email != request.user_email:
+        if (most_recent.user_email, most_recent.version_id) not in target_keys:
             continue
 
         notes_to_publish.append(most_recent)
@@ -819,6 +1020,17 @@ async def publish_notes(
     republished_count = 0
     failed_count = 0
     skipped_count = 0
+
+    def _status_to_apply(note) -> Optional[str]:
+        """Version status to apply for this note, honoring the allowlist."""
+        if not note.version_status:
+            return None
+        if (
+            request.status_version_ids is not None
+            and note.version_id not in request.status_version_ids
+        ):
+            return None
+        return note.version_status
 
     from datetime import datetime, timezone
 
@@ -841,28 +1053,32 @@ async def publish_notes(
 
     for note in notes_to_publish:
         try:
+            # Scratch notes belong to the playlist itself: no version, so no
+            # version status to apply.
+            is_scratch = note.version_id == SCRATCH_VERSION_ID
+            status_to_apply = None if is_scratch else _status_to_apply(note)
+
             # Skip notes with no meaningful content to publish
             has_body = (note.content and note.content.strip()) or (
                 note.subject and note.subject.strip()
             )
-            if not has_body and not note.attachment_ids and not note.version_status:
+            if not has_body and not note.attachment_ids and not status_to_apply:
                 skipped_count += 1
                 continue
 
             # Status-only change with no note body: update version status without
             # creating or publishing a note, and do not mark the draft as published.
-            if not has_body and not note.attachment_ids and note.version_status:
-                prodtrack.update_version_status(note.version_id, note.version_status)
+            if not has_body and not note.attachment_ids and status_to_apply:
+                prodtrack.update_version_status(note.version_id, status_to_apply)
                 skipped_count += 1
                 continue
 
-            # Check if note is already published (re-publish/update)
             if note.published_note_id:
                 if note.published and not note.edited and not note.attachment_ids:
                     # Still apply any pending version status change
-                    if note.version_status:
+                    if status_to_apply:
                         prodtrack.update_version_status(
-                            note.version_id, note.version_status
+                            note.version_id, status_to_apply
                         )
                     skipped_count += 1
                     continue
@@ -873,7 +1089,7 @@ async def publish_notes(
                         content=note.content,
                         subject=note.subject,
                         version_id=note.version_id,
-                        version_status=note.version_status or None,
+                        version_status=status_to_apply,
                     )
                     if not success:
                         failed_count += 1
@@ -897,43 +1113,63 @@ async def publish_notes(
                 )
                 continue
 
-            # Get links
+            # Get links, skipping entities with sentinel ids (e.g. the scratch
+            # pseudo-version) that don't exist in the tracking system
             links = []
             if note.links:
                 for link in note.links:
+                    if link.entity_id == SCRATCH_VERSION_ID:
+                        continue
                     model_class = ENTITY_MODELS.get(link.entity_type)
                     if model_class:
                         links.append(model_class(id=link.entity_id))
 
-            # Ensure playlist is included in links
-            playlist_link_exists = any(
-                isinstance(l, Playlist) and l.id == playlist_id for l in links
-            )
-            if not playlist_link_exists:
-                links.append(_create_stub_entity("Playlist", playlist_id))
-
-            # Ensure version's parent entity (Shot/Asset) is included in links
-            version = prodtrack.get_entity(
-                "version", note.version_id, resolve_links=False
-            )
-            if version and version.entity:
-                entity_link_exists = any(
-                    l.id == version.entity.id and l.type == version.entity.type
+            if is_scratch:
+                # The provider links the playlist itself; don't pass it twice
+                extra_links = [
+                    l
                     for l in links
+                    if not (isinstance(l, Playlist) and l.id == playlist_id)
+                ]
+                note_id = prodtrack.publish_playlist_note(
+                    playlist_id=playlist_id,
+                    content=note.content,
+                    subject=note.subject,
+                    to_users=[],
+                    cc_users=[],
+                    links=extra_links,
+                    author_email=note.user_email,
                 )
-                if not entity_link_exists:
-                    links.append(version.entity)
+            else:
+                # Ensure playlist is included in links
+                playlist_link_exists = any(
+                    isinstance(l, Playlist) and l.id == playlist_id for l in links
+                )
+                if not playlist_link_exists:
+                    links.append(_create_stub_entity("Playlist", playlist_id))
 
-            note_id = prodtrack.publish_note(
-                version_id=note.version_id,
-                content=note.content,
-                subject=note.subject,
-                to_users=[],  # TODO: Parse to/cc
-                cc_users=[],
-                links=links,
-                author_email=note.user_email,
-                version_status=note.version_status or None,
-            )
+                # Ensure version's parent entity (Shot/Asset) is included in links
+                version = prodtrack.get_entity(
+                    "version", note.version_id, resolve_links=False
+                )
+                if version and version.entity:
+                    entity_link_exists = any(
+                        l.id == version.entity.id and l.type == version.entity.type
+                        for l in links
+                    )
+                    if not entity_link_exists:
+                        links.append(version.entity)
+
+                note_id = prodtrack.publish_note(
+                    version_id=note.version_id,
+                    content=note.content,
+                    subject=note.subject,
+                    to_users=[],  # TODO: Parse to/cc
+                    cc_users=[],
+                    links=links,
+                    author_email=note.user_email,
+                    version_status=status_to_apply,
+                )
 
             if note.attachment_ids:
                 _upload_attachments(note_id, note.attachment_ids)
@@ -966,6 +1202,168 @@ async def publish_notes(
         skipped_count=skipped_count,
         failed_count=failed_count,
         total=len(notes_to_publish),
+    )
+
+
+def _transcript_publish_enabled() -> bool:
+    return os.getenv("DNA_ENABLE_TRANSCRIPT_PUBLISH", "false").lower() == "true"
+
+
+@app.post(
+    "/playlists/{playlist_id}/publish-transcript",
+    tags=["Playlists", "Transcription"],
+    summary="Publish a version's captured transcript",
+    description=(
+        "Push the stored transcript for a version to the production tracking "
+        "system as a single custom-entity row. Idempotent via body_hash."
+    ),
+    response_model=PublishTranscriptResponse,
+)
+async def publish_transcript(
+    playlist_id: str,
+    request: PublishTranscriptRequest,
+    storage: StorageProviderDep,
+    prodtrack: ProdtrackProviderDep,
+    current_user: CurrentUserDep,
+) -> PublishTranscriptResponse:
+    """Publish one version's transcript; skip when body_hash has not changed."""
+    if not _transcript_publish_enabled():
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    from dna.transcription_publish import build_transcript_payload
+
+    metadata = await storage.get_playlist_metadata(playlist_id)
+    if metadata is None or not metadata.meeting_id:
+        raise HTTPException(
+            status_code=422,
+            detail="Playlist has no meeting associated yet",
+        )
+    if not metadata.platform:
+        # Empty platform would be rejected downstream as an opaque SG schema
+        # fault; surface a clean 422 instead.
+        raise HTTPException(
+            status_code=422,
+            detail="Playlist metadata has no platform recorded",
+        )
+
+    segments = await storage.get_segments_for_version(playlist_id, request.version_id)
+    if not segments:
+        raise HTTPException(
+            status_code=422,
+            detail="No transcript segments stored for this version",
+        )
+
+    payload = build_transcript_payload(segments)
+    if payload.segments_count == 0:
+        # Segments existed but all were whitespace-only; refuse rather than
+        # create an empty row.
+        raise HTTPException(
+            status_code=422,
+            detail="All stored segments were empty; nothing to publish",
+        )
+
+    existing = await storage.get_published_transcript(
+        playlist_id, request.version_id, metadata.meeting_id
+    )
+    if existing and existing.body_hash == payload.body_hash:
+        return PublishTranscriptResponse(
+            transcript_entity_id=existing.entity_id,
+            outcome="skipped",
+            skipped_reason="no_changes_since_last_publish",
+            segments_count=payload.segments_count,
+        )
+
+    try:
+        version = prodtrack.get_entity(
+            "version", request.version_id, resolve_links=False
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    # Version.project is a dict {type, id, name}, not an object — don't try
+    # project_ref.id.
+    project_ref = getattr(version, "project", None)
+    project_id = project_ref.get("id") if isinstance(project_ref, dict) else None
+    if project_id is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Version has no project associated",
+        )
+
+    try:
+        if existing:
+            # Take entity_type from bookkeeping, not env — sites can migrate
+            # the slot after the row is created, and the update must still
+            # target the original entity.
+            updated = prodtrack.update_transcript(
+                entity_type=existing.entity_type,
+                entity_id=existing.entity_id,
+                body=payload.body,
+                meeting_date=payload.meeting_date,
+            )
+            if not updated:
+                # Raise (and skip the bookkeeping upsert below) so the next
+                # call doesn't see a matching body_hash and incorrectly skip.
+                raise HTTPException(
+                    status_code=502,
+                    detail="Failed to update transcript on the tracking system",
+                )
+            entity_id = existing.entity_id
+            outcome = "updated"
+        else:
+            entity_id = prodtrack.publish_transcript(
+                project_id=project_id,
+                playlist_id=playlist_id,
+                version_id=request.version_id,
+                meeting_id=metadata.meeting_id,
+                meeting_date=payload.meeting_date,
+                platform=metadata.platform,
+                body=payload.body,
+            )
+            outcome = "created"
+    except NotImplementedError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+
+    entity_type = os.getenv("SHOTGRID_TRANSCRIPT_ENTITY", "CustomEntity01")
+    try:
+        await storage.upsert_published_transcript(
+            PublishedTranscriptUpdate(
+                playlist_id=playlist_id,
+                version_id=request.version_id,
+                meeting_id=metadata.meeting_id,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                author_email=current_user,
+                body_hash=payload.body_hash,
+                segments_count=payload.segments_count,
+            )
+        )
+    except Exception as e:
+        # SG row exists but local bookkeeping didn't make it. The next call
+        # with the same body would see existing=None and create a duplicate
+        # SG row. Surface entity_id so an operator can reconcile manually,
+        # and signal to the client that blind retry is unsafe.
+        logger = logging.getLogger(__name__)
+        logger.exception(
+            "Transcript %s created on tracking system id=%s but local "
+            "bookkeeping failed. Next publish will create a duplicate unless "
+            "the SG row is removed or the bookkeeping row is written manually.",
+            outcome,
+            entity_id,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Transcript row {entity_id} was {outcome} on the tracking "
+                f"system but local bookkeeping failed ({e.__class__.__name__}). "
+                f"Do not retry blindly; reconcile the row manually."
+            ),
+        )
+
+    return PublishTranscriptResponse(
+        transcript_entity_id=entity_id,
+        outcome=outcome,
+        segments_count=payload.segments_count,
     )
 
 
@@ -1010,9 +1408,6 @@ async def _sync_published_notes(
         from datetime import datetime, timezone
 
         for (vid, email), note in latest_notes.items():
-            # Check if we already have this specific published note to avoid writes
-            # Optimization: could query storage for all draft notes first.
-            # For now, just upsert.
             update_data = DraftNoteUpdate(
                 content=note.content or "",
                 subject=note.subject or "",
@@ -1196,9 +1591,14 @@ def _user_settings_to_response(settings: UserSettings) -> UserSettingsResponse:
         _id=settings.id,
         user_email=settings.user_email,
         note_prompt=settings.note_prompt,
+        preferred_model=settings.preferred_model,
         default_note_prompt=get_default_note_prompt(),
         regenerate_on_version_change=settings.regenerate_on_version_change,
         regenerate_on_transcript_update=settings.regenerate_on_transcript_update,
+        sync_prodtrack_tab_on_version_change=(
+            settings.sync_prodtrack_tab_on_version_change
+        ),
+        prodtrack_page_type=settings.prodtrack_page_type,
         updated_at=settings.updated_at,
         created_at=settings.created_at,
     )
@@ -1213,9 +1613,12 @@ def _empty_user_settings_response(user_email: str) -> UserSettingsResponse:
         _id="",
         user_email=user_email,
         note_prompt="",
+        preferred_model="",
         default_note_prompt=default,
         regenerate_on_version_change=False,
         regenerate_on_transcript_update=False,
+        sync_prodtrack_tab_on_version_change=True,
+        prodtrack_page_type="version",
         updated_at=now,
         created_at=now,
     )
@@ -1238,7 +1641,7 @@ async def get_user_settings(
     current_user: CurrentUserDep,
 ) -> UserSettingsResponse:
     """Get user settings."""
-    if user_email != current_user:
+    if not emails_match(user_email, current_user):
         raise HTTPException(status_code=403, detail="Forbidden")
     stored = await provider.get_user_settings(user_email)
     if stored is None:
@@ -1260,7 +1663,7 @@ async def upsert_user_settings(
     current_user: CurrentUserDep,
 ) -> UserSettingsResponse:
     """Create or update user settings."""
-    if user_email != current_user:
+    if not emails_match(user_email, current_user):
         raise HTTPException(status_code=403, detail="Forbidden")
     updated = await provider.upsert_user_settings(user_email, data)
     return _user_settings_to_response(updated)
@@ -1279,12 +1682,134 @@ async def delete_user_settings(
     current_user: CurrentUserDep,
 ) -> bool:
     """Delete user settings."""
-    if user_email != current_user:
+    if not emails_match(user_email, current_user):
         raise HTTPException(status_code=403, detail="Forbidden")
     deleted = await provider.delete_user_settings(user_email)
     if not deleted:
         raise HTTPException(status_code=404, detail="User settings not found")
     return True
+
+
+@app.get(
+    "/users/{user_email}/qc-checks",
+    tags=["Note QC"],
+    summary="List note QC checks",
+    response_model=list[NoteQCCheck],
+)
+async def list_qc_checks(
+    user_email: str,
+    storage_provider: StorageProviderDep,
+    current_user: CurrentUserDep,
+) -> list[NoteQCCheck]:
+    """Return the QC checks a user has defined for their draft notes."""
+    if not emails_match(user_email, current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return await storage_provider.get_qc_checks(user_email)
+
+
+@app.post(
+    "/users/{user_email}/qc-checks",
+    tags=["Note QC"],
+    summary="Create a note QC check",
+    response_model=NoteQCCheck,
+    status_code=201,
+)
+async def create_qc_check(
+    user_email: str,
+    data: NoteQCCheckCreate,
+    storage_provider: StorageProviderDep,
+    current_user: CurrentUserDep,
+) -> NoteQCCheck:
+    """Create a QC check that runs against the user's draft notes at publish time."""
+    if not emails_match(user_email, current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return await storage_provider.create_qc_check(user_email, data)
+
+
+@app.put(
+    "/users/{user_email}/qc-checks/{check_id}",
+    tags=["Note QC"],
+    summary="Update a note QC check",
+    response_model=NoteQCCheck,
+)
+async def update_qc_check(
+    user_email: str,
+    check_id: str,
+    data: NoteQCCheckUpdate,
+    storage_provider: StorageProviderDep,
+    current_user: CurrentUserDep,
+) -> NoteQCCheck:
+    """Update an existing QC check. Returns 404 if the check does not exist."""
+    if not emails_match(user_email, current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    updated = await storage_provider.update_qc_check(user_email, check_id, data)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="QC check not found")
+    return updated
+
+
+@app.delete(
+    "/users/{user_email}/qc-checks/{check_id}",
+    tags=["Note QC"],
+    summary="Delete a note QC check",
+    status_code=204,
+)
+async def delete_qc_check(
+    user_email: str,
+    check_id: str,
+    storage_provider: StorageProviderDep,
+    current_user: CurrentUserDep,
+) -> None:
+    """Delete a QC check. Returns 404 if the check does not exist."""
+    if not emails_match(user_email, current_user):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    deleted = await storage_provider.delete_qc_check(user_email, check_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="QC check not found")
+
+
+@app.post(
+    "/playlists/{playlist_id}/versions/{version_id}/run-qc-checks",
+    tags=["Note QC"],
+    summary="Run note QC checks for a draft",
+    response_model=RunQCChecksResponse,
+)
+async def run_qc_checks(
+    playlist_id: str,
+    version_id: str,
+    body: RunQCChecksRequest,
+    storage_provider: StorageProviderDep,
+    prodtrack_provider: ProdtrackProviderDep,
+    llm_provider: LLMProviderDep,
+    current_user: CurrentUserDep,
+) -> RunQCChecksResponse:
+    """Run the draft owner's QC checks against their draft note for this version.
+
+    Returns an empty result set if the draft does not exist.
+    """
+    # Authenticated callers may QC any draft in the playlist (same as publish-notes).
+    # body.user_email identifies the draft owner, not the caller.
+    draft = await storage_provider.get_draft_note(
+        body.user_email, playlist_id, version_id
+    )
+    if draft is None:
+        return RunQCChecksResponse(results=[])
+    checks = await storage_provider.get_qc_checks(body.user_email)
+    segments = await storage_provider.get_segments_for_version(playlist_id, version_id)
+    transcript = TranscriptionProviderBase.build_transcript_text(segments)
+    version = cast(
+        Version,
+        prodtrack_provider.get_entity("version", version_id, resolve_links=False),
+    )
+    results = await run_qc_checks_for_draft(
+        checks=checks,
+        draft=draft,
+        transcript_text=transcript,
+        version=version,
+        prodtrack_provider=prodtrack_provider,
+        llm_provider=llm_provider,
+    )
+    return RunQCChecksResponse(results=results)
 
 
 # -----------------------------------------------------------------------------
@@ -1443,39 +1968,161 @@ async def get_segments_for_version(
 
 
 # -----------------------------------------------------------------------------
+# Extension transcription (browser extension inbound path)
+# -----------------------------------------------------------------------------
+
+
+def _extension_transcription_enabled() -> bool:
+    """Whether the browser-extension transcription route is enabled."""
+    return os.getenv("DNA_ENABLE_EXTENSION_TRANSCRIPTION", "false").lower() == "true"
+
+
+def _extension_key_valid(key: Optional[str]) -> bool:
+    """Validate the extension's shared key against ``DNA_EXTENSION_KEY``.
+
+    The key ties a specific DNA deployment to its extension: the frontend hands
+    it to the extension, which forwards it here. When ``DNA_EXTENSION_KEY`` is
+    unset the gate is disabled (development / backward compatibility). The
+    comparison is constant-time to avoid leaking the key via timing.
+    """
+    expected = os.getenv("DNA_EXTENSION_KEY")
+    if not expected:
+        return True
+    return key is not None and hmac.compare_digest(key, expected)
+
+
+def _authenticate_ws_token(token: Optional[str]) -> Optional[str]:
+    """Validate a token for a WebSocket connection and return the user email.
+
+    Mirrors ``get_current_user`` but for WebSockets, which cannot use the
+    HTTPBearer/Depends flow. Returns ``None`` when authentication fails.
+    """
+    auth_provider = get_auth_provider_cached()
+    auth_provider_type = os.getenv("AUTH_PROVIDER", "none")
+
+    if auth_provider_type == "none":
+        if token and auth_provider is not None:
+            return auth_provider.get_user_email(token)
+        return "anonymous@localhost"
+
+    if not token or auth_provider is None:
+        return None
+
+    try:
+        claims = auth_provider.validate_token(token)
+        email = claims.get("email") if isinstance(claims, dict) else None
+        return email or None
+    except ValueError:
+        return None
+
+
+@app.get(
+    "/transcription/extension/health",
+    tags=["Transcription"],
+    summary="Extension transcription handshake",
+    description=(
+        "Handshake/availability probe for the DNA browser extension. Returns "
+        "404 when extension transcription is disabled."
+    ),
+)
+async def extension_transcription_health() -> dict:
+    """Lightweight handshake so the extension/frontend can confirm the inbound
+    transcription route is enabled on this backend."""
+    if not _extension_transcription_enabled():
+        raise HTTPException(status_code=404, detail="Not Found")
+    return {"status": "ok", "enabled": True}
+
+
+@app.websocket("/transcription/extension/ingest")
+async def extension_transcription_ingest(websocket: WebSocket):
+    """Inbound WebSocket for the DNA browser extension to stream transcripts.
+
+    Frame shape (matches the Vexa passthrough envelope):
+        {"type": "transcript", "playlist_id": int, "speaker": str|None,
+         "confirmed": [...], "pending": [...], "ts": str}
+
+    Confirmed segments are upserted to the playlist's in-review version and the
+    same flat ``{type:"transcript", ...}`` envelope is broadcast to DNA ``/ws``
+    clients, so the frontend behaves identically to the Vexa path.
+
+    Handshakes: on connect the server sends ``{"type":"connected"}``; every
+    transcript frame is acked with ``{"type":"ack","stored":n}``; ``ping`` is
+    answered with ``pong``.
+
+    Auth: bearer-equivalent token passed as the ``token`` query parameter, plus
+    a shared ``key`` query parameter validated against ``DNA_EXTENSION_KEY``
+    (when that env var is set). Gated by ``DNA_ENABLE_EXTENSION_TRANSCRIPTION``.
+    """
+    if not _extension_transcription_enabled():
+        await websocket.close(code=1008, reason="extension transcription disabled")
+        return
+
+    if not _extension_key_valid(websocket.query_params.get("key")):
+        await websocket.close(code=1008, reason="invalid extension key")
+        return
+
+    token = websocket.query_params.get("token")
+    user_email = _authenticate_ws_token(token)
+    if user_email is None:
+        await websocket.close(code=1008, reason="unauthorized")
+        return
+
+    await websocket.accept()
+    service = get_transcription_service()
+    await websocket.send_json({"type": "connected", "user": user_email})
+
+    try:
+        while True:
+            try:
+                message = await websocket.receive_json()
+            except WebSocketDisconnect:
+                break
+            except Exception:
+                await websocket.send_json({"type": "error", "error": "invalid_json"})
+                continue
+
+            if not isinstance(message, dict):
+                await websocket.send_json({"type": "error", "error": "invalid_message"})
+                continue
+
+            msg_type = message.get("type")
+            if msg_type == "ping":
+                await websocket.send_json({"type": "pong", "ts": message.get("ts")})
+                continue
+
+            if msg_type in ("transcript", None):
+                try:
+                    stored = await service.ingest_extension_transcript(message)
+                    await websocket.send_json(
+                        {"type": "ack", "stored": stored, "ts": message.get("ts")}
+                    )
+                except Exception as e:
+                    logger.exception("Failed to ingest extension transcript")
+                    await websocket.send_json({"type": "error", "error": str(e)})
+                continue
+
+            await websocket.send_json({"type": "error", "error": "unknown_type"})
+    except WebSocketDisconnect:
+        pass
+
+
+# -----------------------------------------------------------------------------
 # LLM endpoints
 # -----------------------------------------------------------------------------
 
 
-def _build_version_context(version: Version) -> str:
-    """Build a context string from version metadata."""
-    parts = []
-    if version.name:
-        parts.append(f"Version: {version.name}")
-    if version.entity:
-        entity_type = version.entity.__class__.__name__
-        parts.append(f"{entity_type}: {version.entity.name}")
-    if version.task:
-        if version.task.name:
-            parts.append(f"Task: {version.task.name}")
-        if version.task.pipeline_step and version.task.pipeline_step.get("name"):
-            parts.append(f"Department: {version.task.pipeline_step['name']}")
-    if version.status:
-        parts.append(f"Status: {version.status}")
-    if version.description:
-        parts.append(f"Description: {version.description}")
-    return "\n".join(parts) if parts else "No version context available."
-
-
-def _build_transcript_text(segments: list[StoredSegment]) -> str:
-    """Build a transcript string from segments."""
-    if not segments:
-        return "No transcript available."
-    lines = []
-    for segment in segments:
-        speaker = segment.speaker or "Unknown"
-        lines.append(f"{speaker}: {segment.text}")
-    return "\n".join(lines)
+@app.get(
+    "/models",
+    tags=["LLM"],
+    summary="Get available LLM models",
+    description="Returns the list of models available from the active LLM provider.",
+)
+async def get_available_models(
+    llm_provider: LLMProviderDep,
+    _: CurrentUserDep,
+) -> dict:
+    """Get available models from the active LLM provider."""
+    return await llm_provider.get_available_models()
 
 
 def _build_full_prompt(
@@ -1484,6 +2131,8 @@ def _build_full_prompt(
     context: str,
     existing_notes: str,
     additional_instructions: str | None = None,
+    glossary_global: str = "",
+    glossary_project: str = "",
 ) -> str:
     """Build the full prompt with template values substituted."""
     result = prompt
@@ -1493,6 +2142,7 @@ def _build_full_prompt(
     result = result.replace("{{context}}", context)
     result = result.replace("{{ notes }}", existing_notes)
     result = result.replace("{{notes}}", existing_notes)
+    result = inject_glossaries(result, glossary_global, glossary_project)
     if additional_instructions:
         result += f"\n\nAdditional Instructions: {additional_instructions}"
     return result
@@ -1520,11 +2170,13 @@ async def generate_note(
             if user_settings and user_settings.note_prompt
             else get_default_note_prompt()
         )
+        # Global glossary is the shared, repo-sourced file (read-only at runtime).
+        glossary_global = get_default_glossary_global()
 
         segments = await storage_provider.get_segments_for_version(
             request.playlist_id, request.version_id
         )
-        transcript = _build_transcript_text(segments)
+        transcript = TranscriptionProviderBase.build_transcript_text(segments)
 
         version = cast(
             Version,
@@ -1532,7 +2184,18 @@ async def generate_note(
                 "version", request.version_id, resolve_links=False
             ),
         )
-        context = _build_version_context(version)
+        context = ProdtrackProviderBase.build_version_context(version)
+
+        # Project glossary is production-specific: look it up by the version's
+        # ShotGrid project id. Version.project is a dict {type, id, name}.
+        project_ref = getattr(version, "project", None)
+        project_id = project_ref.get("id") if isinstance(project_ref, dict) else None
+        project_glossary = (
+            await storage_provider.get_project_glossary(project_id)
+            if project_id is not None
+            else None
+        )
+        glossary_project = project_glossary.content if project_glossary else ""
 
         draft_note = await storage_provider.get_draft_note(
             request.user_email, request.playlist_id, request.version_id
@@ -1540,8 +2203,18 @@ async def generate_note(
         existing_notes = draft_note.content if draft_note else ""
 
         full_prompt = _build_full_prompt(
-            prompt, transcript, context, existing_notes, request.additional_instructions
+            prompt,
+            transcript,
+            context,
+            existing_notes,
+            request.additional_instructions,
+            glossary_global,
+            glossary_project,
         )
+
+        model_override = request.model
+        if not model_override and user_settings:
+            model_override = user_settings.preferred_model or None
 
         suggestion = await llm_provider.generate_note(
             prompt=prompt,
@@ -1549,6 +2222,9 @@ async def generate_note(
             context=context,
             existing_notes=existing_notes,
             additional_instructions=request.additional_instructions,
+            model=model_override,
+            glossary_global=glossary_global,
+            glossary_project=glossary_project,
         )
 
         return GenerateNoteResponse(

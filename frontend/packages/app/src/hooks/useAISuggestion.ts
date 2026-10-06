@@ -5,10 +5,10 @@ import {
   type AISuggestionState,
   type UserSettings,
   type DNAEvent,
-  type SegmentEventPayload,
+  type TranscriptEventPayload,
 } from '@dna/core';
 import { apiHandler } from '../api';
-import { useSegmentEvents } from './useDNAEvents';
+import { useTranscriptEvents } from './useDNAEvents';
 
 export interface UseAISuggestionOptions {
   playlistId: string | null;
@@ -99,8 +99,9 @@ export function useAISuggestion({
       prevVersionRef.current !== null &&
       prevVersionRef.current !== versionId
     ) {
+      const model = userSettings?.preferred_model || undefined;
       managerInstance
-        .generateSuggestion(playlistId!, versionId!, userEmail!)
+        .generateSuggestion(playlistId!, versionId!, userEmail!, undefined, model)
         .catch(() => {
           // Error is captured in state
         });
@@ -109,19 +110,20 @@ export function useAISuggestion({
     prevVersionRef.current = versionId;
   }, [versionId, playlistId, userEmail, userSettings, isEnabled]);
 
-  const handleSegmentEvent = useCallback(
+  const handleTranscriptEvent = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    (_event: DNAEvent<SegmentEventPayload>) => {
+    (_event: DNAEvent<TranscriptEventPayload>) => {
       if (!isEnabled || !userSettings?.regenerate_on_transcript_update) {
         return;
       }
 
-      managerInstance.scheduleRegeneration(playlistId!, versionId!, userEmail!);
+      const model = userSettings?.preferred_model || undefined;
+      managerInstance.scheduleRegeneration(playlistId!, versionId!, userEmail!, undefined, model);
     },
     [playlistId, versionId, userEmail, userSettings, isEnabled]
   );
 
-  useSegmentEvents(handleSegmentEvent, {
+  useTranscriptEvents(handleTranscriptEvent, {
     playlistId,
     versionId,
     enabled: isEnabled && !!userSettings?.regenerate_on_transcript_update,
@@ -131,12 +133,14 @@ export function useAISuggestion({
     (additionalInstructions?: string) => {
       if (!isEnabled || settingsUpsertInflight) return;
 
+      const model = userSettings?.preferred_model || undefined;
       managerInstance
         .generateSuggestion(
           playlistId!,
           versionId!,
           userEmail!,
-          additionalInstructions
+          additionalInstructions,
+          model
         )
         .catch(() => {
           // Error is captured in state
@@ -146,6 +150,7 @@ export function useAISuggestion({
       playlistId,
       versionId,
       userEmail,
+      userSettings,
       isEnabled,
       settingsUpsertInflight,
     ]

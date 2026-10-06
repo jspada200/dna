@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import styled from 'styled-components';
 import {
   PanelLeftClose,
@@ -9,25 +10,35 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Button, Tooltip } from '@radix-ui/themes';
-import type { Version } from '@dna/core';
+import { SCRATCH_VERSION_ID } from '@dna/core';
+import type { Version, DraftNote, Playlist } from '@dna/core';
 import { Logo } from './Logo';
 import { UserAvatar } from './UserAvatar';
 import { SplitButton } from './SplitButton';
+import { AddVersionInput } from './AddVersionInput';
+import { ChangePlaylistInput } from './ChangePlaylistInput';
 import { ExpandableSearch, type ExpandableSearchHandle } from './ExpandableSearch';
 import { SquareButton } from './SquareButton';
 import { VersionCard, NoteStatus } from './VersionCard';
 import { TranscriptionMenu } from './TranscriptionMenu';
 import { SettingsModal } from './SettingsModal';
-import { PublishNotesDialog } from './PublishNotesDialog';
-import { useGetVersionsForPlaylist, useGetUserByEmail } from '../api';
-import { usePlaylistMetadata, usePlaylistDraftNotes } from '../hooks';
+import { PublishDialog } from './PublishDialog';
+import { useGetVersionsForPlaylist, useGetUserByEmail, apiHandler } from '../api';
+import {
+  usePlaylistMetadata,
+  useUpsertPlaylistMetadata,
+  usePlaylistDraftNotes,
+  useSetInReview,
+} from '../hooks';
 import { useHotkeyAction, useHotkeyConfig } from '../hotkeys';
+import { useFeatureFlags } from '../contexts';
 
 interface SidebarProps {
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
-  onReplacePlaylist?: () => void;
+  onPlaylistChange?: (playlist: Playlist) => void;
   playlistId: string | null;
+  projectId: string | null;
   selectedVersionId?: string | null;
   onVersionSelect?: (version: Version) => void;
   userEmail: string;
@@ -236,14 +247,18 @@ const StateText = styled.span`
 export function Sidebar({
   collapsed,
   onCollapsedChange,
-  onReplacePlaylist,
+  onPlaylistChange,
   playlistId,
+  projectId,
   selectedVersionId,
   onVersionSelect,
   userEmail,
   onLogout,
 }: SidebarProps) {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [toolbarInput, setToolbarInput] = useState<
+    'none' | 'add-version' | 'change-playlist'
+  >('none');
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const versionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -251,6 +266,7 @@ export function Sidebar({
   const searchRef = useRef<ExpandableSearchHandle>(null);
 
   const { getLabel } = useHotkeyConfig();
+  const { transcriptionEnabled, inReviewEnabled } = useFeatureFlags();
 
   const toggleSettings = useCallback(() => {
     setIsSettingsOpen((prev) => !prev);
@@ -273,12 +289,101 @@ export function Sidebar({
   const { data: playlistMetadata } = usePlaylistMetadata(playlistId);
   const { data: draftNotes } = usePlaylistDraftNotes(playlistId);
 
+  const publishDialogNotes = useMemo(
+    () =>
+      (draftNotes ?? []).filter((n: DraftNote) => {
+        const hasContent =
+          Boolean(n.content?.trim()) || Boolean(n.attachment_ids?.length);
+        const needsPublishing =
+          !n.published || n.edited || Boolean(n.attachment_ids?.length);
+        return hasContent && needsPublishing;
+      }),
+    [draftNotes]
+  );
+
   const inReviewVersionId = playlistMetadata?.in_review;
+  const { setInReview } = useSetInReview(playlistId);
+
+  // Each is non-null only while its toolbar input should be showing.
+  const addVersionPlaylistId =
+    toolbarInput === 'add-version' ? playlistId : null;
+  const changePlaylistProjectId =
+    toolbarInput === 'change-playlist' ? projectId : null;
+  // An open toolbar input owns the whole row, including the search slot.
+  const toolbarInputOpen =
+    addVersionPlaylistId !== null || changePlaylistProjectId !== null;
+
+  const queryClient = useQueryClient();
+  const upsertPlaylistMetadata = useUpsertPlaylistMetadata(playlistId);
+  const hasScratch = !!playlistMetadata?.has_scratch;
+
+  // Placeholder tile for a note on the playlist entity itself. Not a real
+  // version: excluded from RV sync, in-review, search, and the versions query.
+  const scratchVersion = useMemo<Version>(
+    () => ({
+      type: 'Version',
+      id: SCRATCH_VERSION_ID,
+      name: 'SCRATCH PAD',
+      notes: [],
+      ...(projectId != null
+        ? { project: { type: 'Project', id: projectId } }
+        : {}),
+    }),
+    [projectId]
+  );
+
+  const handleAddScratch = () => {
+    if (!playlistId) return;
+    if (!hasScratch) {
+      void upsertPlaylistMetadata.mutateAsync({ has_scratch: true });
+    }
+    // One scratch per playlist: adding again just selects the existing one.
+    onVersionSelect?.(scratchVersion);
+  };
+
+  const handleRemoveScratch = () => {
+    if (!playlistId) return;
+    void upsertPlaylistMetadata.mutateAsync({ has_scratch: false });
+    void apiHandler
+      .deleteDraftNote({
+        playlistId,
+        versionId: SCRATCH_VERSION_ID,
+        userEmail,
+      })
+      .catch(() => {
+        // No draft to delete is fine.
+      })
+      .finally(() => {
+        queryClient.setQueryData(
+          ['draftNote', playlistId, SCRATCH_VERSION_ID, userEmail],
+          null
+        );
+        void queryClient.invalidateQueries({
+          queryKey: ['draftNotes', playlistId],
+        });
+      });
+    if (selectedVersionId === SCRATCH_VERSION_ID && versions?.length) {
+      onVersionSelect?.(versions[0]);
+    }
+  };
 
   const playlistMenuItems = [
-    { label: 'Change Playlist', onSelect: onReplacePlaylist },
-    { label: 'Add Version' },
+    {
+      label: 'Change Playlist',
+      onSelect: () => setToolbarInput('change-playlist'),
+    },
+    { label: 'Add Version', onSelect: () => setToolbarInput('add-version') },
+    { label: 'Add Scratch Pad', onSelect: handleAddScratch },
   ];
+
+  const noteStatusFor = (versionId: string): NoteStatus | null => {
+    const note = draftNotes?.find((n) => n.version_id === versionId);
+    if (!note) return null;
+    if (note.published) return 'published';
+    if (note.published_note_id) return 'edited';
+    if (note.content || note.subject) return 'draft';
+    return null;
+  };
 
   const handleSearchVersionSelect = (version: Version) => {
     onVersionSelect?.(version);
@@ -321,7 +426,7 @@ export function Sidebar({
       );
     }
 
-    if (!versions || versions.length === 0) {
+    if ((!versions || versions.length === 0) && !hasScratch) {
       return (
         <StateContainer>
           <StateText>No versions in this playlist</StateText>
@@ -339,7 +444,26 @@ export function Sidebar({
           </RefetchOverlay>
         )}
         <VersionCardList>
-          {versions.map((version) => (
+          {hasScratch && (
+            <div
+              ref={(el) => {
+                if (el) {
+                  versionRefs.current.set(SCRATCH_VERSION_ID, el);
+                } else {
+                  versionRefs.current.delete(SCRATCH_VERSION_ID);
+                }
+              }}
+            >
+              <VersionCard
+                version={scratchVersion}
+                selected={selectedVersionId === SCRATCH_VERSION_ID}
+                noteStatus={noteStatusFor(SCRATCH_VERSION_ID)}
+                onClick={() => onVersionSelect?.(scratchVersion)}
+                onRemove={handleRemoveScratch}
+              />
+            </div>
+          )}
+          {(versions ?? []).map((version) => (
             <div
               key={version.id}
               ref={(el) => {
@@ -356,18 +480,14 @@ export function Sidebar({
                 department={version.task?.pipeline_step?.name}
                 thumbnailUrl={version.thumbnail}
                 selected={version.id === selectedVersionId}
-                inReview={inReviewVersionId === version.id}
-                noteStatus={((): NoteStatus | null => {
-                  const note = draftNotes?.find(
-                    (n) => n.version_id === version.id
-                  );
-                  if (!note) return null;
-                  if (note.published) return 'published';
-                  if (note.published_note_id) return 'edited';
-                  if (note.content || note.subject) return 'draft';
-                  return null;
-                })()}
+                inReview={inReviewEnabled && inReviewVersionId === version.id}
+                noteStatus={noteStatusFor(version.id)}
                 onClick={() => onVersionSelect?.(version)}
+                onSetInReview={
+                  inReviewEnabled
+                    ? () => void setInReview(version.id)
+                    : undefined
+                }
               />
             </div>
           ))}
@@ -388,7 +508,7 @@ export function Sidebar({
                 variant="solid"
                 onClick={() => setIsPublishDialogOpen(true)}
               >
-                Publish Notes
+                Publish
               </Button>
               <UserAvatar
                 name={user?.name ?? userEmail}
@@ -410,29 +530,49 @@ export function Sidebar({
 
       {collapsed ? (
         <CollapsedToolbar>
-          <TranscriptionMenu playlistId={playlistId} collapsed />
+          {transcriptionEnabled && <TranscriptionMenu playlistId={playlistId} collapsed />}
         </CollapsedToolbar>
       ) : (
         <Toolbar>
-          {!isSearchExpanded && (
-            <ToolbarLeft>
-              <SplitButton
-                menuItems={playlistMenuItems}
-                onClick={() => refetch()}
-              >
-                Reload Playlist
-              </SplitButton>
-            </ToolbarLeft>
-          )}
+          {!isSearchExpanded &&
+            (addVersionPlaylistId ? (
+              <AddVersionInput
+                playlistId={addVersionPlaylistId}
+                projectId={projectId ?? undefined}
+                existingVersionIds={(versions ?? []).map((v) => v.id)}
+                onClose={() => setToolbarInput('none')}
+              />
+            ) : changePlaylistProjectId ? (
+              <ChangePlaylistInput
+                projectId={changePlaylistProjectId}
+                currentPlaylistId={playlistId ?? undefined}
+                onSelect={(playlist) => {
+                  setToolbarInput('none');
+                  onPlaylistChange?.(playlist);
+                }}
+                onClose={() => setToolbarInput('none')}
+              />
+            ) : (
+              <ToolbarLeft>
+                <SplitButton
+                  menuItems={playlistMenuItems}
+                  onClick={() => refetch()}
+                >
+                  Reload Playlist
+                </SplitButton>
+              </ToolbarLeft>
+            ))}
 
-          <ExpandableSearch
-            ref={searchRef}
-            placeholder="Search versions..."
-            versions={versions}
-            selectedVersionId={selectedVersionId}
-            onVersionSelect={handleSearchVersionSelect}
-            onExpandedChange={setIsSearchExpanded}
-          />
+          {!toolbarInputOpen && (
+            <ExpandableSearch
+              ref={searchRef}
+              placeholder="Search versions..."
+              versions={versions}
+              selectedVersionId={selectedVersionId}
+              onVersionSelect={handleSearchVersionSelect}
+              onExpandedChange={setIsSearchExpanded}
+            />
+          )}
         </Toolbar>
       )}
 
@@ -457,13 +597,14 @@ export function Sidebar({
           </Tooltip>
           <SettingsModal
             userEmail={userEmail}
+            projectId={projectId}
             open={isSettingsOpen}
             onOpenChange={setIsSettingsOpen}
           />
         </CollapsedFooter>
       ) : (
         <Footer $collapsed={collapsed}>
-          <TranscriptionMenu playlistId={playlistId} />
+          {transcriptionEnabled && <TranscriptionMenu playlistId={playlistId} />}
           <Tooltip content={`Settings (${getLabel('openSettings')})`}>
             <SettingsButton onClick={toggleSettings}>
               <Settings size={16} />
@@ -472,6 +613,7 @@ export function Sidebar({
           </Tooltip>
           <SettingsModal
             userEmail={userEmail}
+            projectId={projectId}
             open={isSettingsOpen}
             onOpenChange={setIsSettingsOpen}
           />
@@ -481,12 +623,12 @@ export function Sidebar({
 
 
       {playlistId && (
-        <PublishNotesDialog
+        <PublishDialog
           open={isPublishDialogOpen}
           onClose={() => setIsPublishDialogOpen(false)}
           playlistId={playlistId}
           userEmail={userEmail}
-          draftNotes={draftNotes || []}
+          notes={publishDialogNotes}
           versions={versions || []}
         />
       )}

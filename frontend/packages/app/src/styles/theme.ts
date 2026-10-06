@@ -85,7 +85,7 @@ export const lightTheme = {
     },
     sidebar: {
       bg: '#e7e7ee',
-      border: '#c8c8d8',
+      border: '#848488',
     },
     text: {
       primary: '#0e0e16',
@@ -94,9 +94,9 @@ export const lightTheme = {
       inverse: '#ffffff',
     },
     border: {
-      subtle: 'rgba(0, 0, 0, 0.12)',
-      default: 'rgba(0, 0, 0, 0.18)',
-      strong: 'rgba(0, 0, 0, 0.28)',
+      subtle: 'rgba(0, 0, 0, 0.25)',
+      default: 'rgba(0, 0, 0, 0.43)',
+      strong: 'rgba(0, 0, 0, 0.55)',
     },
   },
 } as const;
@@ -104,4 +104,10 @@ export const lightTheme = {
 // backwards-compatible default export
 export const theme = darkTheme;
 
-export type Theme = typeof darkTheme;
+type DeepWiden<T> = T extends string
+  ? string
+  : T extends object
+    ? { [K in keyof T]: DeepWiden<T[K]> }
+    : T;
+
+export type Theme = DeepWiden<typeof darkTheme>;

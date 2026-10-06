@@ -168,6 +168,9 @@ def test_get_entity_note_with_links(mock_provider):
 def test_get_entity_version(mock_provider):
     version = mock_provider.get_entity("version", 300, resolve_links=True)
     assert version.id == "300"
+    assert version.prodtrack_detail_url == (
+        "https://mock-shotgrid.example.com/detail/Version/300"
+    )
     assert version.name == "v_001"
     assert version.status == "rev"
     assert version.task is not None
@@ -441,6 +444,9 @@ def test_get_versions_for_playlist(mock_provider):
     versions = mock_provider.get_versions_for_playlist(400)
     assert len(versions) == 1
     assert versions[0].id == "300"
+    assert versions[0].prodtrack_detail_url == (
+        "https://mock-shotgrid.example.com/detail/Version/300"
+    )
     assert versions[0].task is not None
 
 
@@ -505,6 +511,40 @@ def test_factory_raises_when_shotgrid_selected_but_no_credentials():
             get_prodtrack_provider()
 
 
+class TestMockPublishTranscript:
+    """Mock provider can't write to SG; publish/update must raise a clear error."""
+
+    def test_publish_transcript_raises_with_user_facing_message(self, tmp_path):
+        from datetime import date as date_
+
+        db_path = tmp_path / "mock.db"
+        _create_seeded_db(db_path)
+        provider = MockProdtrackProvider(db_path=db_path)
+
+        with pytest.raises(NotImplementedError, match="live ShotGrid connection"):
+            provider.publish_transcript(
+                project_id=1,
+                playlist_id=400,
+                version_id=300,
+                meeting_id="m-1",
+                meeting_date=date_(2026, 4, 15),
+                platform="google_meet",
+                body="hi",
+            )
+
+    def test_update_transcript_raises_with_user_facing_message(self, tmp_path):
+        from datetime import date as date_
+
+        db_path = tmp_path / "mock.db"
+        _create_seeded_db(db_path)
+        provider = MockProdtrackProvider(db_path=db_path)
+
+        with pytest.raises(NotImplementedError, match="live ShotGrid connection"):
+            provider.update_transcript(
+                entity_id=9001, body="hi", meeting_date=date_(2026, 4, 15)
+            )
+
+
 def test_factory_returns_shotgrid_when_credentials_present():
     with mock.patch.dict(
         os.environ,
@@ -547,3 +587,30 @@ def test_get_entity_round_trips_non_numeric_string_id(tmp_path):
     assert shot.id == "shot-abc"
     assert shot.name == "hero"
     assert shot.project == {"type": "Project", "id": "1"}
+
+
+class TestMockProviderWrites:
+    """Tests for the mock provider's supported write operations."""
+
+    def test_create_playlist(self, mock_provider):
+        playlist = mock_provider.create_playlist("1", "pl_new")
+        assert playlist.code == "pl_new"
+        assert playlist.type == "Playlist"
+        codes = [p.code for p in mock_provider.get_playlists_for_project("1")]
+        assert "pl_new" in codes
+        assert mock_provider.get_versions_for_playlist(playlist.id) == []
+
+    def test_add_version_to_playlist(self, mock_provider):
+        playlist = mock_provider.create_playlist("1", "pl_target")
+        assert mock_provider.add_version_to_playlist(playlist.id, "300") is True
+        ids = [v.id for v in mock_provider.get_versions_for_playlist(playlist.id)]
+        assert ids == ["300"]
+
+    def test_add_version_to_playlist_is_idempotent(self, mock_provider):
+        before = len(mock_provider.get_versions_for_playlist("400"))
+        assert mock_provider.add_version_to_playlist("400", "300") is True
+        assert len(mock_provider.get_versions_for_playlist("400")) == before
+
+    def test_add_version_to_playlist_missing_playlist_raises(self, mock_provider):
+        with pytest.raises(ValueError, match="Playlist 999 not found"):
+            mock_provider.add_version_to_playlist("999", "300")

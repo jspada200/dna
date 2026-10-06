@@ -83,6 +83,8 @@ export interface Version extends EntityBase {
   entity?: Shot | Asset;
   task?: Task;
   notes: Note[];
+  prodtrack_detail_url?: string;
+  prodtrack_entity_detail_url?: string;
 }
 
 export interface Playlist extends EntityBase {
@@ -140,6 +142,13 @@ export interface GetVersionsForPlaylistParams {
 export interface GetUserByEmailParams {
   userEmail: string;
 }
+
+/**
+ * Sentinel version_id for a playlist-level "scratch" note: the draft belongs
+ * to the playlist itself rather than any version, and publishes as a note
+ * linked only to the Playlist entity.
+ */
+export const SCRATCH_VERSION_ID = '-1';
 
 export interface DraftNoteLink {
   entity_type: string;
@@ -208,6 +217,7 @@ export interface PlaylistMetadata {
   meeting_id: string | null;
   platform: Platform | null;
   transcription_paused: boolean;
+  has_scratch: boolean;
 }
 
 export interface PlaylistMetadataUpdate {
@@ -215,6 +225,7 @@ export interface PlaylistMetadataUpdate {
   meeting_id?: string | null;
   platform?: Platform | null;
   transcription_paused?: boolean;
+  has_scratch?: boolean;
 }
 
 export interface GetPlaylistMetadataParams {
@@ -313,6 +324,9 @@ export interface StoredSegment {
   text: string;
   speaker?: string;
   language?: string;
+  start_time?: number;
+  end_time?: number;
+  completed?: boolean;
   absolute_start_time: string;
   absolute_end_time: string;
   vexa_updated_at?: string;
@@ -332,16 +346,40 @@ export interface UserSettings {
   note_prompt: string;
   /** Configured default prompt template (for display when note_prompt is empty). */
   default_note_prompt: string;
+  preferred_model: string;
   regenerate_on_version_change: boolean;
   regenerate_on_transcript_update: boolean;
+  sync_prodtrack_tab_on_version_change: boolean;
+  prodtrack_page_type: 'version' | 'entity';
   updated_at: string;
   created_at: string;
 }
 
 export interface UserSettingsUpdate {
   note_prompt?: string;
+  preferred_model?: string;
   regenerate_on_version_change?: boolean;
   regenerate_on_transcript_update?: boolean;
+  sync_prodtrack_tab_on_version_change?: boolean;
+  prodtrack_page_type?: 'version' | 'entity';
+}
+
+/** Production-specific glossary, keyed by ShotGrid project id. */
+export interface ProjectGlossary {
+  _id: string;
+  project_id: string;
+  content: string;
+  updated_at: string;
+  created_at: string;
+}
+
+export interface GetProjectGlossaryParams {
+  projectId: string;
+}
+
+export interface UpsertProjectGlossaryParams {
+  projectId: string;
+  content: string;
 }
 
 export interface GetUserSettingsParams {
@@ -362,6 +400,13 @@ export interface GenerateNoteParams {
   versionId: string;
   userEmail: string;
   additionalInstructions?: string;
+  model?: string;
+}
+
+export interface AvailableModelsResponse {
+  provider: string;
+  models: string[];
+  default: string;
 }
 
 export interface GenerateNoteResponse {
@@ -423,6 +468,17 @@ export interface SearchEntitiesParams {
   limit?: number;
 }
 
+export interface AddVersionToPlaylistParams {
+  playlistId: string;
+  /** ID of an existing version to add */
+  versionId: string;
+}
+
+export interface CreatePlaylistParams {
+  projectId: string;
+  name: string;
+}
+
 // Status types for version status dropdown
 export interface StatusOption {
   code: string;
@@ -433,9 +489,20 @@ export interface GetVersionStatusesParams {
   projectId?: string;
 }
 
+export interface PublishNoteTarget {
+  user_email: string;
+  version_id: string;
+}
+
 export interface PublishNotesRequest {
   user_email: string;
-  include_others: boolean;
+  targets: PublishNoteTarget[];
+  /**
+   * If provided, draft version_status changes are applied only for these
+   * version ids. Pass [] to suppress status side effects entirely (statuses
+   * are then published separately via updateVersionStatus).
+   */
+  status_version_ids?: string[];
 }
 
 export interface PublishNotesResponse {
@@ -449,4 +516,114 @@ export interface PublishNotesResponse {
 export interface PublishNotesParams {
   playlistId: string;
   request: PublishNotesRequest;
+}
+
+export interface UpdateVersionStatusParams {
+  versionId: string;
+  status: string;
+  /**
+   * When set, pending version_status values on this playlist's draft notes
+   * for the version are cleared server-side after the update.
+   */
+  playlistId?: string;
+}
+
+export interface UpdateVersionStatusResponse {
+  success: boolean;
+}
+
+export interface PublishTranscriptRequest {
+  version_id: string;
+}
+
+export interface PublishTranscriptResponse {
+  transcript_entity_id: string;
+  outcome: 'created' | 'updated' | 'skipped';
+  skipped_reason?: string | null;
+  segments_count: number;
+}
+
+export interface PublishTranscriptParams {
+  playlistId: string;
+  request: PublishTranscriptRequest;
+}
+
+export type NoteQCSeverity = 'warning' | 'error';
+
+export interface NoteQCCheck {
+  _id: string;
+  user_email: string;
+  name: string;
+  prompt: string;
+  severity: NoteQCSeverity;
+  enabled: boolean;
+  updated_at: string;
+  created_at: string;
+}
+
+export interface NoteQCCheckCreate {
+  name: string;
+  prompt: string;
+  severity: NoteQCSeverity;
+  enabled?: boolean;
+}
+
+export interface NoteQCCheckUpdate {
+  name?: string;
+  prompt?: string;
+  severity?: NoteQCSeverity;
+  enabled?: boolean;
+}
+
+export interface NoteQCAttributeSuggestion {
+  to?: string | null;
+  cc?: string | null;
+  subject?: string | null;
+  version_status?: string | null;
+  links?: DraftNoteLink[] | null;
+}
+
+export interface NoteQCResult {
+  check_id: string;
+  check_name: string;
+  severity: NoteQCSeverity;
+  passed: boolean;
+  issue?: string | null;
+  evidence?: string | null;
+  note_suggestion?: string | null;
+  attribute_suggestion?: NoteQCAttributeSuggestion | null;
+}
+
+export interface RunQCChecksRequestBody {
+  user_email: string;
+}
+
+export interface RunQCChecksResponseBody {
+  results: NoteQCResult[];
+}
+
+export interface GetQCChecksParams {
+  userEmail: string;
+}
+
+export interface CreateQCCheckParams {
+  userEmail: string;
+  data: NoteQCCheckCreate;
+}
+
+export interface UpdateQCCheckParams {
+  userEmail: string;
+  checkId: string;
+  data: NoteQCCheckUpdate;
+}
+
+export interface DeleteQCCheckParams {
+  userEmail: string;
+  checkId: string;
+}
+
+export interface RunQCChecksParams {
+  playlistId: string;
+  versionId: string;
+  userEmail: string;
 }

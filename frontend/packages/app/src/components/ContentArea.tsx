@@ -1,11 +1,20 @@
 import { useRef, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
-import type { Version, SearchResult } from '@dna/core';
+import { useQuery } from '@tanstack/react-query';
+import { SCRATCH_VERSION_ID } from '@dna/core';
+import type { Version, SearchResult, UserSettings } from '@dna/core';
 import { VersionHeader } from './VersionHeader';
 import { NoteEditor, type NoteEditorHandle } from './NoteEditor';
 import { AssistantPanel } from './AssistantPanel';
-import { usePlaylistMetadata, useSetInReview, useDraftNote } from '../hooks';
+import {
+  usePlaylistMetadata,
+  useSetInReview,
+  useDraftNote,
+  useProdtrackTabSync,
+} from '../hooks';
 import { useHotkeyAction } from '../hotkeys';
+import { apiHandler, useGetUserByEmail } from '../api';
+import { useFeatureFlags } from '../contexts';
 
 interface ContentAreaProps {
   version?: Version | null;
@@ -48,6 +57,14 @@ const EmptyStateText = styled.p`
   font-size: 14px;
 `;
 
+const ScratchTitle = styled.h1`
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  font-family: ${({ theme }) => theme.fonts.sans};
+  color: ${({ theme }) => theme.colors.text.primary};
+`;
+
 function formatDate(dateString?: string): string {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -69,18 +86,35 @@ export function ContentArea({
   onRefresh,
 }: ContentAreaProps) {
   const noteEditorRef = useRef<NoteEditorHandle>(null);
+  const { transcriptionEnabled, aiEnabled } = useFeatureFlags();
+  const assistantPanelVisible = transcriptionEnabled || aiEnabled;
+
+  // Scratch tiles are placeholders for a note on the playlist entity: no
+  // version metadata, AI assistant, transcript, or in-review interactions.
+  const isScratch = version?.id === SCRATCH_VERSION_ID;
 
   const currentVersionAsSearchResult = useMemo((): SearchResult | undefined => {
-    if (!version) return undefined;
+    // Don't seed the draft's links with the scratch pseudo-version — the note
+    // links to the playlist, which the backend adds on publish.
+    if (!version || version.id === SCRATCH_VERSION_ID) return undefined;
     return { type: 'Version', id: version.id, name: version.name || `Version ${version.id}` };
   }, [version]);
 
+  const { data: currentUser } = useGetUserByEmail(
+    isScratch ? (userEmail ?? null) : null
+  );
+
   const versionSubmitter = useMemo((): SearchResult | undefined => {
+    // The scratch pad has no submitter; its note defaults "To" the author.
+    if (isScratch) {
+      if (!currentUser) return undefined;
+      return { type: 'User', id: currentUser.id, name: currentUser.name || '' };
+    }
     if (!version?.user) return undefined;
     return { type: 'User', id: version.user.id, name: version.user.name || '' };
-  }, [version?.user]);
+  }, [isScratch, currentUser, version?.user]);
 
-  const { draftNote, updateDraftNote, saveAttachmentIds } = useDraftNote({
+  const { draftNote, updateDraftNote, saveAttachmentIds, saveVersionStatus } = useDraftNote({
     playlistId,
     versionId: version?.id,
     userEmail,
@@ -91,13 +125,15 @@ export function ContentArea({
   const selectedVersionStatus = draftNote?.versionStatus || (version?.status ?? '');
 
   const handleVersionStatusChange = useCallback((code: string) => {
-    updateDraftNote({ versionStatus: code });
-  }, [updateDraftNote]);
+    void saveVersionStatus(code);
+  }, [saveVersionStatus]);
 
   const handleRefreshClick = useCallback(() => {
-    updateDraftNote({ versionStatus: version?.status ?? '' });
+    // Clear the draft's status override so the display falls back to the
+    // version's actual status once fresh playlist data arrives.
+    updateDraftNote({ versionStatus: '' });
     onRefresh?.();
-  }, [version?.status, onRefresh, updateDraftNote]);
+  }, [onRefresh, updateDraftNote]);
 
   const currentIndex = version
     ? versions.findIndex((v) => v.id === version.id)
@@ -149,8 +185,42 @@ export function ContentArea({
   useHotkeyAction('nextVersion', handleNext);
   useHotkeyAction('previousVersion', handleBack);
   useHotkeyAction('setInReview', handleSetInReview, {
-    enabled: !!version && !!playlistId,
+    enabled: !!version && !!playlistId && !isScratch,
   });
+
+  const { data: userSettings, isSuccess: userSettingsQuerySuccess } =
+    useQuery<UserSettings | null>({
+      queryKey: ['userSettings', userEmail],
+      queryFn: () => apiHandler.getUserSettings({ userEmail: userEmail! }),
+      enabled: !!userEmail,
+    });
+
+
+  const shouldAutoSyncProdtrackTab =
+    userSettingsQuerySuccess &&
+    (userSettings === null ||
+      (userSettings.sync_prodtrack_tab_on_version_change ?? true) === true);
+
+  const prodtrackPageType = userSettings?.prodtrack_page_type ?? 'version';
+  const activeProdtrackUrl =
+    prodtrackPageType === 'entity'
+      ? (version?.prodtrack_entity_detail_url ?? version?.prodtrack_detail_url)
+      : version?.prodtrack_detail_url;
+
+  const { extensionId, syncProdtrackTab: handleSyncProdtrackTab } =
+    useProdtrackTabSync({
+      activeProdtrackUrl,
+      versionId: version?.id ?? null,
+      autoSyncEnabled: shouldAutoSyncProdtrackTab,
+    });
+
+  const syncProdtrackTitle = !activeProdtrackUrl
+    ? 'Production tracking URL is not available for this version.'
+    : extensionId
+      ? 'Open in the tab sync extension when available; otherwise opens in a new tab.'
+      : 'Open production tracking in a new browser tab.';
+
+  const syncProdtrackDisabled = !activeProdtrackUrl;
 
   if (!version) {
     return (
@@ -161,6 +231,23 @@ export function ContentArea({
             Select a version from the sidebar to view its details
           </EmptyStateText>
         </EmptyState>
+      </ContentWrapper>
+    );
+  }
+
+  if (isScratch) {
+    return (
+      <ContentWrapper>
+        <ScratchTitle>SCRATCH PAD</ScratchTitle>
+        <NoteEditor
+          ref={noteEditorRef}
+          projectId={version.project?.id}
+          currentVersion={null}
+          draftNote={draftNote}
+          updateDraftNote={updateDraftNote}
+          saveAttachmentIds={saveAttachmentIds}
+          defaultHeight={300}
+        />
       </ContentWrapper>
     );
   }
@@ -179,7 +266,8 @@ export function ContentArea({
   }
 
   return (
-    <ContentWrapper>
+    <>
+      <ContentWrapper>
       <VersionHeader
         shotCode={entityName}
         versionNumber={versionNumber}
@@ -194,6 +282,11 @@ export function ContentArea({
         onInReview={handleInReview}
         onSetInReview={handleSetInReview}
         onVersionStatusChange={handleVersionStatusChange}
+        prodtrackDetailUrl={activeProdtrackUrl}
+        prodtrackTabUsesExtension={!!extensionId}
+        onSyncProdtrackTab={extensionId ? handleSyncProdtrackTab : undefined}
+        syncProdtrackDisabled={syncProdtrackDisabled}
+        syncProdtrackTitle={syncProdtrackTitle}
         canGoBack={canGoBack}
         canGoNext={canGoNext}
         hasInReview={hasInReview}
@@ -208,6 +301,7 @@ export function ContentArea({
         draftNote={draftNote}
         updateDraftNote={updateDraftNote}
         saveAttachmentIds={saveAttachmentIds}
+        defaultHeight={assistantPanelVisible ? undefined : 300}
       />
       <AssistantPanel
         playlistId={playlistId}
@@ -215,6 +309,7 @@ export function ContentArea({
         userEmail={userEmail}
         onInsertNote={handleInsertNote}
       />
-    </ContentWrapper>
+      </ContentWrapper>
+    </>
   );
 }

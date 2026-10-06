@@ -5,22 +5,42 @@
 Contributing to the DNA Project
 ===============================
 
-This whole file is mostly a placeholder, we will flesh it out over time.
-I've seeded some parts with language borrowed from the CONTRIBUTING of other
-ASWF projects. The DNA TSC, when fully formed, can revise this all as needed.
+Thank you for contributing to DNA. This guide explains how to report
+issues, submit changes, and meet the project's contribution requirements.
 
 
 Communications
 --------------
 
-* [ASWF Slack](https://slack.aswf.io) -- join for the `#wg-ml` channel for the discussions about this project.
-* Weekly Technical Steering Committee (TSC) Zoom meetings are currently Mondays at 12:00 PT (requests to change the day or time will be entertained if it's impeding participation of stakeholders).
+* [ASWF Slack](https://slack.aswf.io) -- join for the `#wg-ml` channel for the discussions about machine learning and the `#dna` and `##dailies-notes-assistant-tech` channels for the discussions about Dailies Notes Assistant.
+* Weekly Technical Steering Committee (TSC) Zoom meetings are currently every other Monday at 13:00 PT (requests to change the day or time will be entertained if it's impeding participation of stakeholders).
+* Public discussion also happens on [GitHub Issues](https://github.com/AcademySoftwareFoundation/dna/issues), [GitHub Discussions](https://github.com/AcademySoftwareFoundation/dna/discussions), and [GitHub Pull Requests](https://github.com/AcademySoftwareFoundation/dna/pulls).
+
+Reporting bugs and security issues
+----------------------------------
+
+* **Defects and feature requests:** open a GitHub issue at
+  <https://github.com/AcademySoftwareFoundation/dna/issues>. Include
+  steps to reproduce, expected vs actual behavior, and the version or
+  commit you are using.
+* **Security vulnerabilities:** do **not** file a public issue. Follow
+  [SECURITY.md](SECURITY.md) and report privately via GitHub security
+  advisories or <dna-tsc-private@lists.aswf.io>.
 
 
 Contributor License Agreement (CLA) and Intellectual Property
 -------------------------------------------------------------
 
-We don't yet have a CLA in place. TBD.
+### Contributor License Agreements
+To contribute to DNA, you must sign a Contributor License Agreement through the [EasyCLA](https://easycla.lfx.linuxfoundation.org) system, which is integrated with GitHub as a pull request check.
+
+Prior to submitting a pull request, you can sign the form through EasyCLA. If you submit a pull request before the form is signed, the EasyCLA check will fail with a red NOT COVERED message, and you'll have another opportunity to sign the form through the provided link.
+
+If you are an individual writing the code on your own time and you're sure you are the sole owner of any intellectual property you contribute, you can sign the CLA as an Individual Contributor.
+
+If you are writing the code as part of your job, or if your employer retains ownership to intellectual property you create, then your company's legal affairs representatives should sign a Corporate Contributor License Agreement. If your company already has a signed CCLA on file, ask your local CLA manager to add you to your company's approved list.
+
+The DNA CLAs are the standard forms used by Linux Foundation projects and recommended by the ASWF TAC.
 
 ### DCO contribution sign off
 
@@ -87,13 +107,28 @@ accepted. It happens to all of us.
 1. After approval, one of the senior developers (with commit approval to the
 official main repository) will merge your fixes into the main branch.
 
+Do not commit secrets, credentials, API keys, or unencrypted sensitive data.
+Use the example environment files (for example `*.env.example`) and keep real
+values in untracked local files or a secrets manager.
+
+
+Coding standards and tests
+--------------------------
+
+* Python is formatted with Black and isort. From `backend/`, run `make format-python`.
+* TypeScript/React is formatted with Prettier. From `frontend/`, run `npm run format`.
+* New or changed functionality should include automated tests.
+* Backend tests must keep coverage at or above 90%. From `backend/`, run `make test`.
+* Frontend tests: from `frontend/`, run `npm run test-ci`.
+* Pull requests that touch `backend/` or `frontend/` run the corresponding
+  GitHub Actions checks; those checks should pass before merge.
+
 
 Layout of experimental files
 ----------------------------
 
-We don't have "real code" yet, but we're starting to use the repo as a staging
-area for experimentation and information sharing among the contributors.
-
-We recommend that experimental code be shared underneath the `experimental`
-subdirectory, with a further subdirectory specific to each organization.
+Production code lives in `backend/`, `frontend/`, and `dna-chrome-extension/`.
+Experimental prototypes may be shared under `experimental/`, with a further
+subdirectory specific to each organization. Experimental code is not a
+supported release surface.
 

@@ -4,6 +4,7 @@ Pydantic models for DNA entities.
 """
 
 from dna.models.draft_note import (
+    SCRATCH_VERSION_ID,
     DraftNote,
     DraftNoteBase,
     DraftNoteCreate,
@@ -27,8 +28,30 @@ from dna.models.playlist_metadata import (
     PlaylistMetadata,
     PlaylistMetadataUpdate,
 )
+from dna.models.project_glossary import (
+    ProjectGlossary,
+    ProjectGlossaryUpdate,
+)
+from dna.models.published_transcript import (
+    PublishedTranscript,
+    PublishedTranscriptUpdate,
+)
+from dna.models.qc_check import (
+    DEFAULT_ACTION_ITEM_CHECK,
+    NoteQCAttributeSuggestion,
+    NoteQCCheck,
+    NoteQCCheckCreate,
+    NoteQCCheckUpdate,
+    NoteQCLLMOutput,
+    NoteQCResult,
+    NoteQCSeverity,
+    RunQCChecksRequest,
+    RunQCChecksResponse,
+)
 from dna.models.requests import (
+    AddVersionToPlaylistRequest,
     CreateNoteRequest,
+    CreatePlaylistRequest,
     EntityLink,
     FilterCondition,
     FindRequest,
@@ -36,14 +59,18 @@ from dna.models.requests import (
     GenerateNoteResponse,
     PublishNotesRequest,
     PublishNotesResponse,
+    PublishNoteTarget,
+    PublishTranscriptRequest,
+    PublishTranscriptResponse,
     SearchRequest,
     SearchResult,
     StatusOption,
+    UpdateVersionStatusRequest,
+    UpdateVersionStatusResponse,
 )
 from dna.models.stored_segment import (
     StoredSegment,
     StoredSegmentCreate,
-    generate_segment_id,
 )
 from dna.models.transcription import (
     BotSession,
@@ -61,6 +88,7 @@ from dna.models.user_settings import (
 from dna.models.user_settings_response import UserSettingsResponse
 
 __all__ = [
+    "AddVersionToPlaylistRequest",
     "EntityBase",
     "Project",
     "Shot",
@@ -70,10 +98,12 @@ __all__ = [
     "Version",
     "Playlist",
     "User",
+    "Transcript",
     "DNAEntity",
     "ENTITY_MODELS",
     "EntityLink",
     "CreateNoteRequest",
+    "CreatePlaylistRequest",
     "FilterCondition",
     "FindRequest",
     "GenerateNoteRequest",
@@ -81,8 +111,14 @@ __all__ = [
     "SearchRequest",
     "SearchResult",
     "StatusOption",
+    "PublishNoteTarget",
     "PublishNotesRequest",
     "PublishNotesResponse",
+    "PublishTranscriptRequest",
+    "PublishTranscriptResponse",
+    "UpdateVersionStatusRequest",
+    "UpdateVersionStatusResponse",
+    "SCRATCH_VERSION_ID",
     "DraftNote",
     "DraftNoteBase",
     "DraftNoteCreate",
@@ -90,17 +126,29 @@ __all__ = [
     "DraftNoteUpdate",
     "PlaylistMetadata",
     "PlaylistMetadataUpdate",
+    "ProjectGlossary",
+    "ProjectGlossaryUpdate",
+    "PublishedTranscript",
+    "PublishedTranscriptUpdate",
     "StoredSegment",
     "StoredSegmentCreate",
-    "generate_segment_id",
     "BotSession",
     "BotStatus",
     "BotStatusEnum",
     "DispatchBotRequest",
     "Platform",
-    "Transcript",
     "TranscriptSegment",
     "UserSettings",
     "UserSettingsUpdate",
     "UserSettingsResponse",
+    "NoteQCSeverity",
+    "NoteQCCheckCreate",
+    "NoteQCCheckUpdate",
+    "NoteQCCheck",
+    "NoteQCAttributeSuggestion",
+    "NoteQCLLMOutput",
+    "NoteQCResult",
+    "RunQCChecksRequest",
+    "RunQCChecksResponse",
+    "DEFAULT_ACTION_ITEM_CHECK",
 ]

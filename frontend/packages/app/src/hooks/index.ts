@@ -24,13 +24,25 @@ export type {
   UseTranscriptionReturn,
 } from './useTranscription';
 
+export { useTranscriptionExtension } from './useTranscriptionExtension';
+export type {
+  ExtensionInstallState,
+  UseTranscriptionExtensionResult,
+} from './useTranscriptionExtension';
+
+export { useProdtrackTabSync } from './useProdtrackTabSync';
+export type {
+  UseProdtrackTabSyncParams,
+  UseProdtrackTabSyncResult,
+} from './useProdtrackTabSync';
+
 export {
   useEventSubscription,
   useMultipleEventSubscriptions,
   useConnectionStatus,
-  useSegmentEvents,
+  useTranscriptEvents,
 } from './useDNAEvents';
-export type { SegmentEvent } from './useDNAEvents';
+export type { TranscriptEventPayload } from './useDNAEvents';
 
 export { useSegments } from './useSegments';
 export type { UseSegmentsOptions, UseSegmentsResult } from './useSegments';

@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import os
+from datetime import date
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -14,6 +17,26 @@ class UserNotFoundError(Exception):
 class ProdtrackProviderBase:
     def __init__(self):
         pass
+
+    @staticmethod
+    def build_version_context(version: Version) -> str:
+        """Format a Version entity as plain text for LLM prompts."""
+        parts: list[str] = []
+        if version.name:
+            parts.append(f"Version: {version.name}")
+        if version.entity:
+            entity_type = version.entity.__class__.__name__
+            parts.append(f"{entity_type}: {version.entity.name}")
+        if version.task:
+            if version.task.name:
+                parts.append(f"Task: {version.task.name}")
+            if version.task.pipeline_step and version.task.pipeline_step.get("name"):
+                parts.append(f"Department: {version.task.pipeline_step['name']}")
+        if version.status:
+            parts.append(f"Status: {version.status}")
+        if version.description:
+            parts.append(f"Description: {version.description}")
+        return "\n".join(parts) if parts else "No version context available."
 
     def _get_object_type(self, object_type: str) -> type["EntityBase"]:
         """Get the model class from the entity type string."""
@@ -113,6 +136,18 @@ class ProdtrackProviderBase:
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
+    def create_playlist(self, project_id: str, name: str) -> "Playlist":
+        """Create a new playlist in the production tracking system.
+
+        Args:
+            project_id: The ID of the project the playlist belongs to
+            name: The playlist name/code
+
+        Returns:
+            The created Playlist entity
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
     def get_versions_for_playlist(self, playlist_id: str) -> list["Version"]:
         """Get versions for a playlist.
 
@@ -121,6 +156,18 @@ class ProdtrackProviderBase:
 
         Returns:
             List of Version entities in the playlist
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def add_version_to_playlist(self, playlist_id: str, version_id: str) -> bool:
+        """Add an existing version to a playlist.
+
+        Args:
+            playlist_id: The ID of the playlist
+            version_id: The ID of the version to add
+
+        Returns:
+            True on success (including when the version was already present)
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
@@ -166,6 +213,33 @@ class ProdtrackProviderBase:
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
+    def publish_playlist_note(
+        self,
+        playlist_id: str,
+        content: str,
+        subject: str,
+        to_users: list[str],
+        cc_users: list[str],
+        links: list["EntityBase"],
+        author_email: str | None = None,
+    ) -> str:
+        """Publish a note linked to a playlist rather than a version.
+
+        Args:
+            playlist_id: The ID of the playlist to link to
+            content: Note content
+            subject: Note subject
+            to_users: List of opaque user IDs to address
+            cc_users: List of opaque user IDs to CC
+            links: List of additional entities to link
+            author_email: Optional email of the author. If provided, the note
+                should be created on behalf of this user.
+
+        Returns:
+            The ID of the created note
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
     def update_version_status(self, version_id: str, status: str) -> bool:
         """Update the status of a version without publishing a note.
 
@@ -190,6 +264,43 @@ class ProdtrackProviderBase:
 
         Returns:
             True if upload succeeded, False otherwise
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def publish_transcript(
+        self,
+        *,
+        project_id: str,
+        playlist_id: str,
+        version_id: str,
+        meeting_id: str,
+        meeting_date: date,
+        platform: str,
+        body: str,
+    ) -> str:
+        """Create a transcript row in the production tracking system.
+
+        Returns the entity ID of the newly-created row.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    def update_transcript(
+        self,
+        *,
+        entity_type: str,
+        entity_id: str,
+        body: str,
+        meeting_date: date,
+    ) -> bool:
+        """Update body + meeting_date on an existing transcript entity.
+
+        `entity_type` must come from the caller's bookkeeping (whichever
+        custom-entity slot the row was originally created in). Reading the
+        current env var here would misfire if studios migrate between slots.
+
+        Only body and meeting_date are touched on purpose; summary and other
+        fields are left alone so manual edits on the tracking-system side
+        survive a re-publish.
         """
         raise NotImplementedError("Subclasses must implement this method.")
 

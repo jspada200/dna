@@ -20,8 +20,10 @@ class TestUserSettingsModels:
         """Test UserSettingsUpdate default values."""
         update = UserSettingsUpdate()
         assert update.note_prompt is None
+        assert update.preferred_model is None
         assert update.regenerate_on_version_change is None
         assert update.regenerate_on_transcript_update is None
+        assert update.sync_prodtrack_tab_on_version_change is None
 
     def test_user_settings_update_with_values(self):
         """Test UserSettingsUpdate with values."""
@@ -43,6 +45,7 @@ class TestUserSettingsModels:
             note_prompt="My custom prompt",
             regenerate_on_version_change=True,
             regenerate_on_transcript_update=False,
+            sync_prodtrack_tab_on_version_change=True,
             updated_at=now,
             created_at=now,
         )
@@ -51,6 +54,7 @@ class TestUserSettingsModels:
         assert settings.note_prompt == "My custom prompt"
         assert settings.regenerate_on_version_change is True
         assert settings.regenerate_on_transcript_update is False
+        assert settings.sync_prodtrack_tab_on_version_change is True
 
     def test_user_settings_defaults(self):
         """Test UserSettings default values."""
@@ -62,8 +66,27 @@ class TestUserSettingsModels:
             created_at=now,
         )
         assert settings.note_prompt == ""
+        assert settings.preferred_model == ""
         assert settings.regenerate_on_version_change is False
         assert settings.regenerate_on_transcript_update is False
+        assert settings.sync_prodtrack_tab_on_version_change is True
+
+    def test_user_settings_with_preferred_model(self):
+        """Test UserSettings with preferred_model set."""
+        now = datetime.now(timezone.utc)
+        settings = UserSettings(
+            _id="abc123",
+            user_email="user@example.com",
+            preferred_model="gpt-4o",
+            updated_at=now,
+            created_at=now,
+        )
+        assert settings.preferred_model == "gpt-4o"
+
+    def test_user_settings_update_with_preferred_model(self):
+        """Test UserSettingsUpdate with preferred_model."""
+        update = UserSettingsUpdate(preferred_model="gpt-4o")
+        assert update.preferred_model == "gpt-4o"
 
 
 class TestUserSettingsEndpoints:
@@ -100,6 +123,7 @@ class TestUserSettingsEndpoints:
             assert data["default_note_prompt"] == get_default_note_prompt()
             assert data["regenerate_on_version_change"] is True
             assert data["regenerate_on_transcript_update"] is False
+            assert data["sync_prodtrack_tab_on_version_change"] is True
             mock_storage_provider.get_user_settings.assert_called_once_with(
                 "test@example.com"
             )
@@ -339,6 +363,7 @@ class TestMongoDBUserSettingsProvider:
             "note_prompt": "Custom prompt",
             "regenerate_on_version_change": True,
             "regenerate_on_transcript_update": False,
+            "sync_prodtrack_tab_on_version_change": False,
             "updated_at": now,
             "created_at": now,
         }
@@ -351,6 +376,7 @@ class TestMongoDBUserSettingsProvider:
         assert result.note_prompt == "Custom prompt"
         assert result.regenerate_on_version_change is True
         assert result.regenerate_on_transcript_update is False
+        assert result.sync_prodtrack_tab_on_version_change is False
 
     @pytest.mark.asyncio
     async def test_get_user_settings_returns_none(
@@ -375,6 +401,7 @@ class TestMongoDBUserSettingsProvider:
             "note_prompt": "Updated prompt",
             "regenerate_on_version_change": True,
             "regenerate_on_transcript_update": True,
+            "sync_prodtrack_tab_on_version_change": False,
             "updated_at": now,
             "created_at": now,
         }
@@ -392,6 +419,7 @@ class TestMongoDBUserSettingsProvider:
         assert result.note_prompt == "Updated prompt"
         assert result.regenerate_on_version_change is True
         assert result.regenerate_on_transcript_update is True
+        assert result.sync_prodtrack_tab_on_version_change is False
         mock_collection.find_one_and_update.assert_called_once()
 
     @pytest.mark.asyncio
