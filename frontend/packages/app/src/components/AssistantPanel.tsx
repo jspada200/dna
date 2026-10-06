@@ -12,8 +12,8 @@ const isDevMode = import.meta.env.VITE_DEV_MODE === 'true';
 
 interface AssistantPanelProps {
   activeTab?: string;
-  playlistId?: number | null;
-  versionId?: number | null;
+  playlistId?: string | null;
+  versionId?: string | null;
   userEmail?: string | null;
   onInsertNote?: (content: string) => void;
 }

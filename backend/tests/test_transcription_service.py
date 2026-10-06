@@ -62,7 +62,7 @@ class TestSubscribeToMeeting:
         await service.subscribe_to_meeting(
             platform="google_meet",
             meeting_id="abc-def-ghi",
-            playlist_id=42,
+            playlist_id="42",
         )
 
         mock_transcription_provider.subscribe_to_meeting.assert_called_once()
@@ -77,10 +77,10 @@ class TestSubscribeToMeeting:
         await service.subscribe_to_meeting(
             platform="google_meet",
             meeting_id="abc-def-ghi",
-            playlist_id=42,
+            playlist_id="42",
         )
 
-        assert service._meeting_to_playlist["google_meet:abc-def-ghi"] == 42
+        assert service._meeting_to_playlist["google_meet:abc-def-ghi"] == "42"
 
     @pytest.mark.asyncio
     async def test_tracks_subscribed_meetings(self, service):
@@ -88,7 +88,7 @@ class TestSubscribeToMeeting:
         await service.subscribe_to_meeting(
             platform="google_meet",
             meeting_id="abc-def-ghi",
-            playlist_id=42,
+            playlist_id="42",
         )
 
         assert "google_meet:abc-def-ghi" in service._subscribed_meetings
@@ -101,12 +101,12 @@ class TestSubscribeToMeeting:
         await service.subscribe_to_meeting(
             platform="google_meet",
             meeting_id="abc-def-ghi",
-            playlist_id=42,
+            playlist_id="42",
         )
         await service.subscribe_to_meeting(
             platform="google_meet",
             meeting_id="abc-def-ghi",
-            playlist_id=42,
+            playlist_id="42",
         )
 
         assert mock_transcription_provider.subscribe_to_meeting.call_count == 1
@@ -119,7 +119,7 @@ class TestSubscribeToMeeting:
         await service.subscribe_to_meeting(
             platform="google_meet",
             meeting_id="abc-def-ghi",
-            playlist_id=42,
+            playlist_id="42",
         )
 
         assert "Transcription provider not initialized" in caplog.text
@@ -155,8 +155,8 @@ class TestOnTranscriptionUpdated:
         """Sample playlist metadata with in_review version."""
         return PlaylistMetadata(
             _id="meta123",
-            playlist_id=42,
-            in_review=5,
+            playlist_id="42",
+            in_review="5",
             meeting_id="abc-def-ghi",
             platform="google_meet",
             vexa_meeting_id=123,
@@ -265,8 +265,8 @@ class TestOnTranscriptionUpdated:
         await service.on_transcription_updated(payload)
 
         expected_segment_id = generate_segment_id(
-            playlist_id=42,
-            version_id=5,
+            playlist_id="42",
+            version_id="5",
             absolute_start_time="2026-01-23T04:00:00.000Z",
         )
 
@@ -349,7 +349,7 @@ class TestOnTranscriptionUpdated:
         service._meeting_to_playlist["google_meet:abc-def-ghi"] = 42
         mock_storage_provider.get_playlist_metadata.return_value = PlaylistMetadata(
             _id="meta123",
-            playlist_id=42,
+            playlist_id="42",
             in_review=None,
         )
 
@@ -419,8 +419,8 @@ class TestOnTranscriptionUpdated:
         service._meeting_to_playlist["google_meet:abc-def-ghi"] = 42
         paused_metadata = PlaylistMetadata(
             _id="meta123",
-            playlist_id=42,
-            in_review=5,
+            playlist_id="42",
+            in_review="5",
             meeting_id="abc-def-ghi",
             platform="google_meet",
             vexa_meeting_id=123,
@@ -475,8 +475,8 @@ class TestOnTranscriptionUpdated:
         resumed_at = datetime(2026, 1, 23, 4, 0, 10, tzinfo=timezone.utc)
         resumed_metadata = PlaylistMetadata(
             _id="meta123",
-            playlist_id=42,
-            in_review=5,
+            playlist_id="42",
+            in_review="5",
             meeting_id="abc-def-ghi",
             platform="google_meet",
             transcription_paused=False,
@@ -658,8 +658,8 @@ class TestResubscribeToActiveMeetings:
         """Sample playlist metadata."""
         return PlaylistMetadata(
             _id="meta123",
-            playlist_id=42,
-            in_review=5,
+            playlist_id="42",
+            in_review="5",
             meeting_id="abc-def-ghi",
             platform="google_meet",
             vexa_meeting_id=123,
@@ -725,8 +725,8 @@ class TestResubscribeToActiveMeetings:
         ]
         metadata = PlaylistMetadata(
             _id="meta123",
-            playlist_id=42,
-            in_review=5,
+            playlist_id="42",
+            in_review="5",
             meeting_id="abc-def-ghi",
         )
         mock_storage_provider.get_playlist_metadata_by_meeting_id.return_value = (
@@ -761,7 +761,7 @@ class TestResubscribeToActiveMeetings:
 
         await service.resubscribe_to_active_meetings()
 
-        assert service._meeting_to_playlist["google_meet:abc-def-ghi"] == 42
+        assert service._meeting_to_playlist["google_meet:abc-def-ghi"] == "42"
 
     @pytest.mark.asyncio
     async def test_skips_completed_bots(
@@ -910,7 +910,7 @@ class TestResubscribeToActiveMeetings:
             {
                 "platform": "google_meet",
                 "meeting_id": "abc-def-ghi",
-                "playlist_id": 42,
+                "playlist_id": "42",
                 "status": "in_meeting",
                 "recovered": True,
             },
@@ -927,16 +927,16 @@ class TestResubscribeToActiveMeetings:
         """Test that recovery publishes status for each active bot."""
         metadata1 = PlaylistMetadata(
             _id="meta1",
-            playlist_id=42,
-            in_review=5,
+            playlist_id="42",
+            in_review="5",
             meeting_id="abc-def-ghi",
             platform="google_meet",
             vexa_meeting_id=123,
         )
         metadata2 = PlaylistMetadata(
             _id="meta2",
-            playlist_id=43,
-            in_review=6,
+            playlist_id="43",
+            in_review="6",
             meeting_id="123456789",
             platform="zoom",
             vexa_meeting_id=456,

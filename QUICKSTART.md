@@ -29,7 +29,7 @@ cp example.docker-compose.local.vexa.yml docker-compose.local.vexa.yml
 
 Edit `docker-compose.local.yml` with your credentials.
 
-**Production tracking (ShotGrid):** To run without a ShotGrid seat, set **`PRODTRACK_PROVIDER=mock`** in `docker-compose.local.yml`. The mock provider uses read-only SQLite with pre-seeded data. To use real ShotGrid, set `PRODTRACK_PROVIDER=shotgrid` (or leave it unset) and add `SHOTGRID_URL`, `SHOTGRID_SCRIPT_NAME`, and `SHOTGRID_API_KEY`. See [Mock setup](#mock-production-tracking-setup) below for how to refresh or customize the mock data.
+**Production tracking (ShotGrid):** Entity IDs are strings. The ShotGrid provider translates ShotGrid's integer IDs to strings. To run without a ShotGrid seat, set **`PRODTRACK_PROVIDER=mock`** in `docker-compose.local.yml`. The mock provider uses read-only SQLite with pre-seeded data. To use real ShotGrid, set `PRODTRACK_PROVIDER=shotgrid` (or leave it unset) and add `SHOTGRID_URL`, `SHOTGRID_SCRIPT_NAME`, and `SHOTGRID_API_KEY`. See [Mock setup](#mock-production-tracking-setup) below for how to refresh or customize the mock data.
 
 **LLM provider:** Set `LLM_PROVIDER` to choose which backend LLM integration to use.
 

@@ -9,24 +9,24 @@ export type EntityType =
 
 export interface ProjectReference {
   type: string;
-  id: number;
+  id: string;
   name?: string;
 }
 
 export interface PipelineStep {
   type: string;
-  id: number;
+  id: string;
   name?: string;
 }
 
 export interface UserReference {
-  id: number;
+  id: string;
   name: string;
   type: string;
 }
 
 export interface EntityBase {
-  id: number;
+  id: string;
   type: EntityType;
 }
 
@@ -96,7 +96,7 @@ export interface Playlist extends EntityBase {
 }
 
 export interface User {
-  id: number;
+  id: string;
   type: 'User';
   name?: string;
   email?: string;
@@ -115,7 +115,7 @@ export type DNAEntity =
 
 export interface EntityLink {
   type: string;
-  id: number;
+  id: string;
 }
 
 export interface CreateNoteRequest {
@@ -130,11 +130,11 @@ export interface GetProjectsForUserParams {
 }
 
 export interface GetPlaylistsForProjectParams {
-  projectId: number;
+  projectId: string;
 }
 
 export interface GetVersionsForPlaylistParams {
-  playlistId: number;
+  playlistId: string;
 }
 
 export interface GetUserByEmailParams {
@@ -143,15 +143,15 @@ export interface GetUserByEmailParams {
 
 export interface DraftNoteLink {
   entity_type: string;
-  entity_id: number;
+  entity_id: string;
   entity_name?: string;
 }
 
 export interface DraftNote {
   _id: string;
   user_email: string;
-  playlist_id: number;
-  version_id: number;
+  playlist_id: string;
+  version_id: string;
   content: string;
   subject: string;
   to: string;
@@ -160,7 +160,7 @@ export interface DraftNote {
   version_status: string;
   published: boolean;
   edited: boolean;
-  published_note_id?: number | null;
+  published_note_id?: string | null;
   updated_at: string;
   created_at: string;
   attachment_ids: string[];
@@ -178,56 +178,56 @@ export interface DraftNoteUpdate {
 }
 
 export interface GetDraftNoteParams {
-  playlistId: number;
-  versionId: number;
+  playlistId: string;
+  versionId: string;
   userEmail: string;
 }
 
 export interface UpsertDraftNoteParams {
-  playlistId: number;
-  versionId: number;
+  playlistId: string;
+  versionId: string;
   userEmail: string;
   data: DraftNoteUpdate;
 }
 
 export interface DeleteDraftNoteParams {
-  playlistId: number;
-  versionId: number;
+  playlistId: string;
+  versionId: string;
   userEmail: string;
 }
 
 export interface GetAllDraftNotesParams {
-  playlistId: number;
-  versionId: number;
+  playlistId: string;
+  versionId: string;
 }
 
 export interface PlaylistMetadata {
   _id: string;
-  playlist_id: number;
-  in_review: number | null;
+  playlist_id: string;
+  in_review: string | null;
   meeting_id: string | null;
   platform: Platform | null;
   transcription_paused: boolean;
 }
 
 export interface PlaylistMetadataUpdate {
-  in_review?: number | null;
+  in_review?: string | null;
   meeting_id?: string | null;
   platform?: Platform | null;
   transcription_paused?: boolean;
 }
 
 export interface GetPlaylistMetadataParams {
-  playlistId: number;
+  playlistId: string;
 }
 
 export interface UpsertPlaylistMetadataParams {
-  playlistId: number;
+  playlistId: string;
   data: PlaylistMetadataUpdate;
 }
 
 export interface DeletePlaylistMetadataParams {
-  playlistId: number;
+  playlistId: string;
 }
 
 export type Platform = 'google_meet' | 'teams';
@@ -245,7 +245,7 @@ export type BotStatusEnum =
 export interface DispatchBotRequest {
   platform: Platform;
   meeting_id: string;
-  playlist_id: number;
+  playlist_id: string;
   passcode?: string;
   bot_name?: string;
   language?: string;
@@ -262,7 +262,7 @@ export interface BotStatus {
 export interface BotSession {
   platform: Platform;
   meeting_id: string;
-  playlist_id: number;
+  playlist_id: string;
   status: BotStatusEnum;
   bot_name?: string;
   language?: string;
@@ -308,8 +308,8 @@ export interface GetTranscriptParams {
 export interface StoredSegment {
   id: string;
   segment_id: string;
-  playlist_id: number;
-  version_id: number;
+  playlist_id: string;
+  version_id: string;
   text: string;
   speaker?: string;
   language?: string;
@@ -321,8 +321,8 @@ export interface StoredSegment {
 }
 
 export interface GetSegmentsParams {
-  playlistId: number;
-  versionId: number;
+  playlistId: string;
+  versionId: string;
 }
 
 export interface UserSettings {
@@ -358,8 +358,8 @@ export interface DeleteUserSettingsParams {
 }
 
 export interface GenerateNoteParams {
-  playlistId: number;
-  versionId: number;
+  playlistId: string;
+  versionId: string;
   userEmail: string;
   additionalInstructions?: string;
 }
@@ -379,8 +379,8 @@ export interface AISuggestionState {
 }
 
 export type AISuggestionStateChangeCallback = (
-  playlistId: number,
-  versionId: number,
+  playlistId: string,
+  versionId: string,
   state: AISuggestionState
 ) => void;
 
@@ -396,19 +396,19 @@ export type SearchableEntityType =
 export interface SearchRequest {
   query: string;
   entity_types: SearchableEntityType[];
-  project_id?: number;
+  project_id?: string;
   limit?: number;
 }
 
 export interface SearchResult {
   type: string;
-  id: number;
+  id: string;
   name: string;
   description?: string;
   email?: string;
   project?: {
     type: string;
-    id: number;
+    id: string;
   };
 }
 
@@ -419,7 +419,7 @@ export interface SearchResponse {
 export interface SearchEntitiesParams {
   query: string;
   entityTypes: SearchableEntityType[];
-  projectId?: number;
+  projectId?: string;
   limit?: number;
 }
 
@@ -430,7 +430,7 @@ export interface StatusOption {
 }
 
 export interface GetVersionStatusesParams {
-  projectId?: number;
+  projectId?: string;
 }
 
 export interface PublishNotesRequest {
@@ -447,6 +447,6 @@ export interface PublishNotesResponse {
 }
 
 export interface PublishNotesParams {
-  playlistId: number;
+  playlistId: string;
   request: PublishNotesRequest;
 }

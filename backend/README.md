@@ -24,7 +24,7 @@ Providers are the services that populate abstractions or interfaces with other s
 
 Production Tracking providers are the services that provide data to the backend from the production tracking systems and allow for updates to the production tracking systems.
 
-**ShotGrid** is the primary production tracking integration. To run without a ShotGrid seat, set **`PRODTRACK_PROVIDER=mock`**; the mock provider is read-only and backed by a SQLite database under `src/dna/prodtrack_providers/mock_data/`. See [Mock production tracking](#mock-production-tracking) below.
+Entity IDs are opaque strings throughout DNA. **ShotGrid** uses integer IDs, and the ShotGrid provider translates those to and from strings at its boundary. ShotGrid is the primary production tracking integration. To run without a ShotGrid seat, set **`PRODTRACK_PROVIDER=mock`**; the mock provider is read-only and backed by a SQLite database under `src/dna/prodtrack_providers/mock_data/`. See [Mock production tracking](#mock-production-tracking) below.
 
 ### LLM
 

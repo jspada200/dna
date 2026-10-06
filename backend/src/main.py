@@ -411,8 +411,10 @@ async def delete_attachment(attachment_id: str, _: CurrentUserDep) -> dict:
     description="Returns a thumbnail image for a version from the mock dataset (when using mock prodtrack provider).",
     response_class=FileResponse,
 )
-async def get_mock_thumbnail(version_id: int):
+async def get_mock_thumbnail(version_id: str):
     """Serve a thumbnail image from mock_data/thumbnails/ for the given version ID."""
+    if version_id != Path(version_id).name:
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
     for ext in THUMBNAIL_EXTENSIONS:
         path = MOCK_THUMBNAILS_DIR / f"{version_id}{ext}"
         if path.is_file():
@@ -465,7 +467,7 @@ async def websocket_endpoint(websocket: WebSocket):
     response_model=Version,
 )
 async def get_version(
-    version_id: int, provider: ProdtrackProviderDep, _: CurrentUserDep
+    version_id: str, provider: ProdtrackProviderDep, _: CurrentUserDep
 ) -> Version:
     """Get a version entity by its ID."""
     try:
@@ -482,7 +484,7 @@ async def get_version(
     response_model=Playlist,
 )
 async def get_playlist(
-    playlist_id: int, provider: ProdtrackProviderDep, _: CurrentUserDep
+    playlist_id: str, provider: ProdtrackProviderDep, _: CurrentUserDep
 ) -> Playlist:
     """Get a playlist entity by its ID."""
     try:
@@ -499,7 +501,7 @@ async def get_playlist(
     response_model=Shot,
 )
 async def get_shot(
-    shot_id: int, provider: ProdtrackProviderDep, _: CurrentUserDep
+    shot_id: str, provider: ProdtrackProviderDep, _: CurrentUserDep
 ) -> Shot:
     """Get a shot entity by its ID."""
     try:
@@ -516,7 +518,7 @@ async def get_shot(
     response_model=Asset,
 )
 async def get_asset(
-    asset_id: int, provider: ProdtrackProviderDep, _: CurrentUserDep
+    asset_id: str, provider: ProdtrackProviderDep, _: CurrentUserDep
 ) -> Asset:
     """Get an asset entity by its ID."""
     try:
@@ -533,7 +535,7 @@ async def get_asset(
     response_model=Task,
 )
 async def get_task(
-    task_id: int, provider: ProdtrackProviderDep, _: CurrentUserDep
+    task_id: str, provider: ProdtrackProviderDep, _: CurrentUserDep
 ) -> Task:
     """Get a task entity by its ID."""
     try:
@@ -550,7 +552,7 @@ async def get_task(
     response_model=Note,
 )
 async def get_note(
-    note_id: int, provider: ProdtrackProviderDep, _: CurrentUserDep
+    note_id: str, provider: ProdtrackProviderDep, _: CurrentUserDep
 ) -> Note:
     """Get a note entity by its ID."""
     try:
@@ -564,7 +566,7 @@ async def get_note(
 # -----------------------------------------------------------------------------
 
 
-def _create_stub_entity(entity_type: str, entity_id: int) -> EntityBase:
+def _create_stub_entity(entity_type: str, entity_id: str) -> EntityBase:
     """Create a minimal entity stub for linking purposes."""
     entity_map = {
         "Version": Version,
@@ -602,7 +604,7 @@ async def create_note(
                 note_links.append(_create_stub_entity(link.type, link.id))
 
         note = Note(
-            id=0,
+            id="",
             subject=request.subject,
             content=request.content,
             project=request.project,
@@ -686,7 +688,7 @@ async def search_entities(
 )
 async def get_version_statuses(
     provider: ProdtrackProviderDep,
-    project_id: Optional[int] = None,
+    project_id: Optional[str] = None,
 ) -> list[StatusOption]:
     """Get valid status options for versions."""
     try:
@@ -748,7 +750,7 @@ async def get_projects_for_user(
     response_model=list[Playlist],
 )
 async def get_playlists_for_project(
-    project_id: int, provider: ProdtrackProviderDep, _: CurrentUserDep
+    project_id: str, provider: ProdtrackProviderDep, _: CurrentUserDep
 ) -> list[Playlist]:
     """Get playlists for a project."""
     try:
@@ -765,7 +767,7 @@ async def get_playlists_for_project(
     response_model=list[Version],
 )
 async def get_versions_for_playlist(
-    playlist_id: int, provider: ProdtrackProviderDep, _: CurrentUserDep
+    playlist_id: str, provider: ProdtrackProviderDep, _: CurrentUserDep
 ) -> list[Version]:
     """Get versions for a playlist."""
     try:
@@ -782,7 +784,7 @@ async def get_versions_for_playlist(
     response_model=PublishNotesResponse,
 )
 async def publish_notes(
-    playlist_id: int,
+    playlist_id: str,
     request: PublishNotesRequest,
     storage: StorageProviderDep,
     prodtrack: ProdtrackProviderDep,
@@ -820,7 +822,7 @@ async def publish_notes(
 
     from datetime import datetime, timezone
 
-    def _upload_attachments(sg_note_id: int, attachment_ids: list[str]) -> None:
+    def _upload_attachments(sg_note_id: str, attachment_ids: list[str]) -> None:
         """Upload staged attachment files to a ShotGrid note and clean up local files."""
         for attachment_id in attachment_ids:
             attachment_dir = ATTACHMENT_STORE_DIR / attachment_id
@@ -973,7 +975,7 @@ async def publish_notes(
 
 
 async def _sync_published_notes(
-    playlist_id: int,
+    playlist_id: str,
     prodtrack: ProdtrackProviderBase,
     storage: StorageProviderBase,
 ):
@@ -991,7 +993,7 @@ async def _sync_published_notes(
 
         # 2. Group by (version_id, author_email) and find latest
         # Map: (version_id, author_email) -> Note
-        latest_notes: dict[tuple[int, str], Note] = {}
+        latest_notes: dict[tuple[str, str], Note] = {}
 
         for version in versions:
             if not version.notes:
@@ -1002,11 +1004,7 @@ async def _sync_published_notes(
                     continue
 
                 key = (version.id, note.author.email)
-                existing = latest_notes.get(key)
-
-                # If no existing note for this key, or current note is newer
-                if not existing or note.id > existing.id:
-                    latest_notes[key] = note
+                latest_notes[key] = note
 
         # 3. Upsert selected notes to storage
         from datetime import datetime, timezone
@@ -1043,7 +1041,7 @@ async def _sync_published_notes(
     response_model=list[DraftNote],
 )
 async def get_playlist_draft_notes(
-    playlist_id: int,
+    playlist_id: str,
     provider: StorageProviderDep,
     prodtrack: ProdtrackProviderDep,
     _: CurrentUserDep,
@@ -1062,8 +1060,8 @@ async def get_playlist_draft_notes(
     response_model=list[DraftNote],
 )
 async def get_all_draft_notes(
-    playlist_id: int,
-    version_id: int,
+    playlist_id: str,
+    version_id: str,
     provider: StorageProviderDep,
     _: CurrentUserDep,
 ) -> list[DraftNote]:
@@ -1079,8 +1077,8 @@ async def get_all_draft_notes(
     response_model=Optional[DraftNote],
 )
 async def get_draft_note(
-    playlist_id: int,
-    version_id: int,
+    playlist_id: str,
+    version_id: str,
     user_email: str,
     provider: StorageProviderDep,
     _: CurrentUserDep,
@@ -1097,8 +1095,8 @@ async def get_draft_note(
     response_model=DraftNote,
 )
 async def upsert_draft_note(
-    playlist_id: int,
-    version_id: int,
+    playlist_id: str,
+    version_id: str,
     user_email: str,
     data: DraftNoteUpdate,
     provider: StorageProviderDep,
@@ -1117,8 +1115,8 @@ async def upsert_draft_note(
     response_model=bool,
 )
 async def delete_draft_note(
-    playlist_id: int,
-    version_id: int,
+    playlist_id: str,
+    version_id: str,
     user_email: str,
     provider: StorageProviderDep,
     _: CurrentUserDep,
@@ -1143,7 +1141,7 @@ async def delete_draft_note(
     response_model=Optional[PlaylistMetadata],
 )
 async def get_playlist_metadata(
-    playlist_id: int,
+    playlist_id: str,
     provider: StorageProviderDep,
     _: CurrentUserDep,
 ) -> Optional[PlaylistMetadata]:
@@ -1159,7 +1157,7 @@ async def get_playlist_metadata(
     response_model=PlaylistMetadata,
 )
 async def upsert_playlist_metadata(
-    playlist_id: int,
+    playlist_id: str,
     data: PlaylistMetadataUpdate,
     provider: StorageProviderDep,
     _: CurrentUserDep,
@@ -1176,7 +1174,7 @@ async def upsert_playlist_metadata(
     response_model=bool,
 )
 async def delete_playlist_metadata(
-    playlist_id: int,
+    playlist_id: str,
     provider: StorageProviderDep,
     _: CurrentUserDep,
 ) -> bool:
@@ -1432,8 +1430,8 @@ async def get_transcript(
     response_model=list[StoredSegment],
 )
 async def get_segments_for_version(
-    playlist_id: int,
-    version_id: int,
+    playlist_id: str,
+    version_id: str,
     storage_provider: StorageProviderDep,
     _: CurrentUserDep,
 ) -> list[StoredSegment]:

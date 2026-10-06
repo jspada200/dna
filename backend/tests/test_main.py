@@ -46,7 +46,7 @@ class TestCreateNoteEndpoint:
         from dna.models.entity import Note
 
         mock_provider.add_entity.return_value = Note(
-            id=123,
+            id="123",
             subject="Test Note",
             content="Test content",
             project={"type": "Project", "id": 85},
@@ -65,7 +65,7 @@ class TestCreateNoteEndpoint:
             )
             assert response.status_code == 201
             data = response.json()
-            assert data["id"] == 123
+            assert data["id"] == "123"
             assert data["subject"] == "Test Note"
         finally:
             app.dependency_overrides.clear()
@@ -75,7 +75,7 @@ class TestCreateNoteEndpoint:
         from dna.models.entity import Note
 
         mock_provider.add_entity.return_value = Note(
-            id=456,
+            id="456",
             subject="Linked Note",
             content="Note with links",
             project={"type": "Project", "id": 85},
@@ -91,8 +91,8 @@ class TestCreateNoteEndpoint:
                     "content": "Note with links",
                     "project": {"type": "Project", "id": 85},
                     "note_links": [
-                        {"type": "Version", "id": 6957},
-                        {"type": "Playlist", "id": 6},
+                        {"type": "Version", "id": "6957"},
+                        {"type": "Playlist", "id": "6"},
                     ],
                 },
             )
@@ -135,8 +135,8 @@ class TestFindEndpoint:
         from dna.models.entity import Project
 
         mock_provider.find.return_value = [
-            Project(id=1, name="Project One"),
-            Project(id=2, name="Project Two"),
+            Project(id="1", name="Project One"),
+            Project(id="2", name="Project Two"),
         ]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
@@ -152,9 +152,9 @@ class TestFindEndpoint:
             assert response.status_code == 200
             data = response.json()
             assert len(data) == 2
-            assert data[0]["id"] == 1
+            assert data[0]["id"] == "1"
             assert data[0]["type"] == "Project"
-            assert data[1]["id"] == 2
+            assert data[1]["id"] == "2"
             assert data[1]["type"] == "Project"
         finally:
             app.dependency_overrides.clear()
@@ -163,7 +163,7 @@ class TestFindEndpoint:
         """Test that find passes filters to the provider."""
         from dna.models.entity import Shot
 
-        mock_provider.find.return_value = [Shot(id=100, name="shot_010")]
+        mock_provider.find.return_value = [Shot(id="100", name="shot_010")]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
 
@@ -192,7 +192,7 @@ class TestFindEndpoint:
         """Test that find normalizes entity type to lowercase."""
         from dna.models.entity import Project
 
-        mock_provider.find.return_value = [Project(id=1, name="Test")]
+        mock_provider.find.return_value = [Project(id="1", name="Test")]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
 
@@ -292,7 +292,7 @@ class TestFindEndpoint:
         """Test find with multiple filter conditions."""
         from dna.models.entity import Version
 
-        mock_provider.find.return_value = [Version(id=1, name="v001", status="apr")]
+        mock_provider.find.return_value = [Version(id="1", name="v001", status="apr")]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
 
@@ -319,7 +319,7 @@ class TestFindEndpoint:
         """Test that filters defaults to empty list when not provided."""
         from dna.models.entity import Project
 
-        mock_provider.find.return_value = [Project(id=1, name="Test")]
+        mock_provider.find.return_value = [Project(id="1", name="Test")]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
 
@@ -349,13 +349,13 @@ class TestSearchEndpoint:
         mock_provider.search.return_value = [
             {
                 "type": "User",
-                "id": 1,
+                "id": "1",
                 "name": "John Smith",
                 "email": "john@example.com",
             },
             {
                 "type": "Shot",
-                "id": 100,
+                "id": "100",
                 "name": "shot_010_0020",
                 "description": "Hero enters frame",
                 "project": {"type": "Project", "id": 85},
@@ -370,7 +370,7 @@ class TestSearchEndpoint:
                 json={
                     "query": "john",
                     "entity_types": ["user", "shot"],
-                    "project_id": 85,
+                    "project_id": "85",
                     "limit": 10,
                 },
             )
@@ -396,7 +396,7 @@ class TestSearchEndpoint:
                 json={
                     "query": "test",
                     "entity_types": ["user", "shot", "asset"],
-                    "project_id": 123,
+                    "project_id": "123",
                     "limit": 5,
                 },
             )
@@ -404,7 +404,7 @@ class TestSearchEndpoint:
             mock_provider.search.assert_called_once_with(
                 query="test",
                 entity_types=["user", "shot", "asset"],
-                project_id=123,
+                project_id="123",
                 limit=5,
             )
         finally:
@@ -436,7 +436,7 @@ class TestSearchEndpoint:
         mock_provider.search.return_value = [
             {
                 "type": "User",
-                "id": 1,
+                "id": "1",
                 "name": "John Smith",
                 "email": "john@example.com",
             }
@@ -592,9 +592,9 @@ class TestSearchEndpoint:
     def test_search_with_multiple_entity_types(self, mock_provider):
         """Test search across multiple entity types."""
         mock_provider.search.return_value = [
-            {"type": "User", "id": 1, "name": "John", "email": "john@example.com"},
-            {"type": "Shot", "id": 2, "name": "john_shot", "description": "Test"},
-            {"type": "Asset", "id": 3, "name": "johnny_rig", "description": "Rig"},
+            {"type": "User", "id": "1", "name": "John", "email": "john@example.com"},
+            {"type": "Shot", "id": "2", "name": "john_shot", "description": "Test"},
+            {"type": "Asset", "id": "3", "name": "johnny_rig", "description": "Rig"},
         ]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
@@ -605,7 +605,7 @@ class TestSearchEndpoint:
                 json={
                     "query": "joh",
                     "entity_types": ["user", "shot", "asset", "version"],
-                    "project_id": 123,
+                    "project_id": "123",
                     "limit": 5,
                 },
             )
@@ -681,8 +681,8 @@ class TestGetProjectsForUserEndpoint:
         from dna.models.entity import Project
 
         mock_provider.get_projects_for_user.return_value = [
-            Project(id=1, name="Project One"),
-            Project(id=2, name="Project Two"),
+            Project(id="1", name="Project One"),
+            Project(id="2", name="Project Two"),
         ]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
@@ -692,9 +692,9 @@ class TestGetProjectsForUserEndpoint:
             assert response.status_code == 200
             data = response.json()
             assert len(data) == 2
-            assert data[0]["id"] == 1
+            assert data[0]["id"] == "1"
             assert data[0]["type"] == "Project"
-            assert data[1]["id"] == 2
+            assert data[1]["id"] == "2"
             assert data[1]["type"] == "Project"
         finally:
             app.dependency_overrides.clear()
@@ -704,7 +704,7 @@ class TestGetProjectsForUserEndpoint:
         from dna.models.entity import Project
 
         mock_provider.get_projects_for_user.return_value = [
-            Project(id=1, name="Test Project")
+            Project(id="1", name="Test Project")
         ]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
@@ -761,8 +761,8 @@ class TestGetPlaylistsForProjectEndpoint:
         from dna.models.entity import Playlist
 
         mock_provider.get_playlists_for_project.return_value = [
-            Playlist(id=1, code="Dailies Review"),
-            Playlist(id=2, code="Final Review"),
+            Playlist(id="1", code="Dailies Review"),
+            Playlist(id="2", code="Final Review"),
         ]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
@@ -772,9 +772,9 @@ class TestGetPlaylistsForProjectEndpoint:
             assert response.status_code == 200
             data = response.json()
             assert len(data) == 2
-            assert data[0]["id"] == 1
+            assert data[0]["id"] == "1"
             assert data[0]["type"] == "Playlist"
-            assert data[1]["id"] == 2
+            assert data[1]["id"] == "2"
             assert data[1]["type"] == "Playlist"
         finally:
             app.dependency_overrides.clear()
@@ -786,14 +786,14 @@ class TestGetPlaylistsForProjectEndpoint:
         from dna.models.entity import Playlist
 
         mock_provider.get_playlists_for_project.return_value = [
-            Playlist(id=1, code="Test Playlist")
+            Playlist(id="1", code="Test Playlist")
         ]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
 
         try:
             client.get("/projects/123/playlists")
-            mock_provider.get_playlists_for_project.assert_called_once_with(123)
+            mock_provider.get_playlists_for_project.assert_called_once_with("123")
         finally:
             app.dependency_overrides.clear()
 
@@ -841,8 +841,8 @@ class TestGetVersionsForPlaylistEndpoint:
         from dna.models.entity import Version
 
         mock_provider.get_versions_for_playlist.return_value = [
-            Version(id=1, name="shot_010_v001", status="rev"),
-            Version(id=2, name="shot_020_v002", status="apr"),
+            Version(id="1", name="shot_010_v001", status="rev"),
+            Version(id="2", name="shot_020_v002", status="apr"),
         ]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
@@ -852,9 +852,9 @@ class TestGetVersionsForPlaylistEndpoint:
             assert response.status_code == 200
             data = response.json()
             assert len(data) == 2
-            assert data[0]["id"] == 1
+            assert data[0]["id"] == "1"
             assert data[0]["type"] == "Version"
-            assert data[1]["id"] == 2
+            assert data[1]["id"] == "2"
             assert data[1]["type"] == "Version"
         finally:
             app.dependency_overrides.clear()
@@ -866,14 +866,14 @@ class TestGetVersionsForPlaylistEndpoint:
         from dna.models.entity import Version
 
         mock_provider.get_versions_for_playlist.return_value = [
-            Version(id=1, name="v001")
+            Version(id="1", name="v001")
         ]
 
         app.dependency_overrides[get_prodtrack_provider_cached] = lambda: mock_provider
 
         try:
             client.get("/playlists/123/versions")
-            mock_provider.get_versions_for_playlist.assert_called_once_with(123)
+            mock_provider.get_versions_for_playlist.assert_called_once_with("123")
         finally:
             app.dependency_overrides.clear()
 
@@ -951,7 +951,7 @@ class TestGenerateNoteEndpoint:
         mock_storage_provider.get_draft_note.return_value = None
 
         mock_prodtrack_provider.get_entity.return_value = Version(
-            id=1, name="shot_010_v001"
+            id="1", name="shot_010_v001"
         )
 
         mock_llm_provider.generate_note.return_value = "Generated suggestion"
@@ -968,8 +968,8 @@ class TestGenerateNoteEndpoint:
             response = client.post(
                 "/generate-note",
                 json={
-                    "playlist_id": 1,
-                    "version_id": 1,
+                    "playlist_id": "1",
+                    "version_id": "1",
                     "user_email": "test@example.com",
                 },
             )
@@ -990,7 +990,7 @@ class TestGenerateNoteEndpoint:
         mock_storage_provider.get_draft_note.return_value = None
 
         mock_prodtrack_provider.get_entity.return_value = Version(
-            id=1, name="shot_010_v001"
+            id="1", name="shot_010_v001"
         )
 
         mock_llm_provider.generate_note.return_value = "Default prompt result"
@@ -1007,8 +1007,8 @@ class TestGenerateNoteEndpoint:
             response = client.post(
                 "/generate-note",
                 json={
-                    "playlist_id": 1,
-                    "version_id": 1,
+                    "playlist_id": "1",
+                    "version_id": "1",
                     "user_email": "test@example.com",
                 },
             )
@@ -1031,8 +1031,8 @@ class TestGenerateNoteEndpoint:
             StoredSegment(
                 id="seg1",
                 segment_id="seg1",
-                playlist_id=1,
-                version_id=1,
+                playlist_id="1",
+                version_id="1",
                 text="Hello world",
                 speaker="Alice",
                 absolute_start_time="2024-01-01T00:00:00Z",
@@ -1043,8 +1043,8 @@ class TestGenerateNoteEndpoint:
             StoredSegment(
                 id="seg2",
                 segment_id="seg2",
-                playlist_id=1,
-                version_id=1,
+                playlist_id="1",
+                version_id="1",
                 text="How are you?",
                 speaker="Bob",
                 absolute_start_time="2024-01-01T00:00:05Z",
@@ -1056,7 +1056,7 @@ class TestGenerateNoteEndpoint:
         mock_storage_provider.get_draft_note.return_value = None
 
         mock_prodtrack_provider.get_entity.return_value = Version(
-            id=1, name="shot_010_v001"
+            id="1", name="shot_010_v001"
         )
 
         mock_llm_provider.generate_note.return_value = "Generated"
@@ -1073,8 +1073,8 @@ class TestGenerateNoteEndpoint:
             client.post(
                 "/generate-note",
                 json={
-                    "playlist_id": 1,
-                    "version_id": 1,
+                    "playlist_id": "1",
+                    "version_id": "1",
                     "user_email": "test@example.com",
                 },
             )
@@ -1105,8 +1105,8 @@ class TestGenerateNoteEndpoint:
             response = client.post(
                 "/generate-note",
                 json={
-                    "playlist_id": 1,
-                    "version_id": 1,
+                    "playlist_id": "1",
+                    "version_id": "1",
                     "user_email": "test@example.com",
                 },
             )
@@ -1131,3 +1131,27 @@ class TestMockThumbnailsEndpoint:
         with mock.patch("main.MOCK_THUMBNAILS_DIR", tmp_path):
             response = client.get("/api/mock-thumbnails/99999")
         assert response.status_code == 404
+
+    def test_get_mock_thumbnail_rejects_path_traversal(self, tmp_path):
+        with mock.patch("main.MOCK_THUMBNAILS_DIR", tmp_path):
+            response = client.get("/api/mock-thumbnails/..%2Fsecret")
+        assert response.status_code == 404
+
+
+def test_version_route_rejects_non_numeric_shotgrid_id():
+    """ShotGrid cannot translate a non-numeric entity ID, so the route returns 4xx."""
+    from dna.prodtrack_providers.shotgrid import ShotgridProvider
+
+    provider = ShotgridProvider(
+        url="https://test.shotgunstudio.com",
+        script_name="test_script",
+        api_key="test_key",
+        connect=False,
+    )
+    provider.sg = mock.MagicMock()
+    app.dependency_overrides[get_prodtrack_provider_cached] = lambda: provider
+    try:
+        response = client.get("/version/abc")
+        assert response.status_code == 404
+    finally:
+        app.dependency_overrides.clear()

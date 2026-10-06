@@ -9,8 +9,8 @@ import { apiHandler } from '../api';
 import { useSegmentEvents } from './useDNAEvents';
 
 export interface UseSegmentsOptions {
-  playlistId: number | null;
-  versionId: number | null;
+  playlistId: string | null;
+  versionId: string | null;
   enabled?: boolean;
 }
 

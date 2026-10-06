@@ -27,8 +27,8 @@ interface SidebarProps {
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
   onReplacePlaylist?: () => void;
-  playlistId: number | null;
-  selectedVersionId?: number | null;
+  playlistId: string | null;
+  selectedVersionId?: string | null;
   onVersionSelect?: (version: Version) => void;
   userEmail: string;
   onLogout?: () => void;
@@ -246,7 +246,7 @@ export function Sidebar({
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const versionRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const versionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<ExpandableSearchHandle>(null);
 

@@ -21,7 +21,7 @@ import {
 import { SplitButton } from './SplitButton';
 
 interface TranscriptionMenuProps {
-  playlistId: number | null;
+  playlistId: string | null;
   collapsed?: boolean;
 }
 

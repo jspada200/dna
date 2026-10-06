@@ -8,7 +8,7 @@ import { DraftNote, Version } from '@dna/core';
 interface PublishNotesDialogProps {
     open: boolean;
     onClose: () => void;
-    playlistId: number;
+    playlistId: string;
     userEmail: string;
     draftNotes: DraftNote[];
     versions?: Version[];

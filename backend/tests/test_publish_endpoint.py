@@ -43,8 +43,8 @@ class TestPublishNotesEndpoint:
         draft_note = DraftNote(
             _id="note1",
             user_email="user@example.com",
-            playlist_id=100,
-            version_id=101,
+            playlist_id="100",
+            version_id="101",
             content="Test note",
             subject="Test subject",
             created_at=datetime.now(timezone.utc),
@@ -52,7 +52,7 @@ class TestPublishNotesEndpoint:
             published=False,
         )
         mock_storage.get_draft_notes_for_playlist.return_value = [draft_note]
-        mock_prodtrack.publish_note.return_value = 500
+        mock_prodtrack.publish_note.return_value = "500"
 
         # Execute request
         response = client.post(
@@ -69,7 +69,7 @@ class TestPublishNotesEndpoint:
         # Verify provider called
         mock_prodtrack.publish_note.assert_called_once()
         args = mock_prodtrack.publish_note.call_args[1]
-        assert args["version_id"] == 101
+        assert args["version_id"] == "101"
         assert args["content"] == "Test note"
         assert args["author_email"] == "user@example.com"
 
@@ -78,7 +78,7 @@ class TestPublishNotesEndpoint:
         call_args = mock_storage.upsert_draft_note.call_args
         assert call_args[1]["user_email"] == "user@example.com"
         assert call_args[1]["data"].published is True
-        assert call_args[1]["data"].published_note_id == 500
+        assert call_args[1]["data"].published_note_id == "500"
 
     def test_publish_notes_skips_published(
         self, client, mock_storage, mock_prodtrack, override_deps
@@ -87,14 +87,14 @@ class TestPublishNotesEndpoint:
         published_note = DraftNote(
             _id="note2",
             user_email="user@example.com",
-            playlist_id=100,
-            version_id=102,
+            playlist_id="100",
+            version_id="102",
             content="Already published",
             subject="Sub",
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             published=True,  # ALREADY PUBLISHED
-            published_note_id=123,
+            published_note_id="123",
         )
         mock_storage.get_draft_notes_for_playlist.return_value = [published_note]
 
@@ -118,15 +118,15 @@ class TestPublishNotesEndpoint:
         other_note = DraftNote(
             _id="note3",
             user_email="other@example.com",
-            playlist_id=100,
-            version_id=103,
+            playlist_id="100",
+            version_id="103",
             content="Other note",
             subject="Sub",
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
         mock_storage.get_draft_notes_for_playlist.return_value = [other_note]
-        mock_prodtrack.publish_note.return_value = 500
+        mock_prodtrack.publish_note.return_value = "500"
 
         # 1. include_others = False
         response = client.post(
@@ -152,14 +152,14 @@ class TestPublishNotesEndpoint:
         edited_note = DraftNote(
             _id="note4",
             user_email="user@example.com",
-            playlist_id=100,
-            version_id=104,
+            playlist_id="100",
+            version_id="104",
             content="Edited content",
             subject="Sub",
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             published=True,
-            published_note_id=505,
+            published_note_id="505",
             edited=True,  # EDITED IS TRUE
         )
         mock_storage.get_draft_notes_for_playlist.return_value = [edited_note]
@@ -178,7 +178,7 @@ class TestPublishNotesEndpoint:
         # Verify provider called
         mock_prodtrack.update_note.assert_called_once()
         args = mock_prodtrack.update_note.call_args[1]
-        assert args["note_id"] == 505
+        assert args["note_id"] == "505"
         assert args["content"] == "Edited content"
 
         # Verify storage update sets edited=False
@@ -195,8 +195,8 @@ class TestPublishNotesEndpoint:
         status_only_note = DraftNote(
             _id="note5",
             user_email="user@example.com",
-            playlist_id=100,
-            version_id=105,
+            playlist_id="100",
+            version_id="105",
             content="",
             subject="",
             version_status="rev",
@@ -218,7 +218,7 @@ class TestPublishNotesEndpoint:
         assert data["published_count"] == 0
         mock_prodtrack.publish_note.assert_not_called()
         # Version status should be updated
-        mock_prodtrack.update_version_status.assert_called_once_with(105, "rev")
+        mock_prodtrack.update_version_status.assert_called_once_with("105", "rev")
         # Draft must NOT be marked as published
         mock_storage.upsert_draft_note.assert_not_called()
 
@@ -230,8 +230,8 @@ class TestPublishNotesEndpoint:
         published_with_status = DraftNote(
             _id="note6",
             user_email="user@example.com",
-            playlist_id=100,
-            version_id=106,
+            playlist_id="100",
+            version_id="106",
             content="Some note",
             subject="Sub",
             version_status="cmpt",
@@ -239,7 +239,7 @@ class TestPublishNotesEndpoint:
             updated_at=datetime.now(timezone.utc),
             published=True,
             edited=False,
-            published_note_id=600,
+            published_note_id="600",
         )
         mock_storage.get_draft_notes_for_playlist.return_value = [published_with_status]
         mock_prodtrack.update_version_status.return_value = True
@@ -254,4 +254,4 @@ class TestPublishNotesEndpoint:
         assert data["skipped_count"] == 1
         mock_prodtrack.publish_note.assert_not_called()
         mock_prodtrack.update_note.assert_not_called()
-        mock_prodtrack.update_version_status.assert_called_once_with(106, "cmpt")
+        mock_prodtrack.update_version_status.assert_called_once_with("106", "cmpt")

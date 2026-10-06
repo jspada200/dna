@@ -199,12 +199,12 @@ class TestMongoDBStorageProvider:
 
     def test_build_query(self, provider):
         """Test _build_query builds correct query."""
-        query = provider._build_query("user@test.com", 1, 2)
+        query = provider._build_query("user@test.com", "1", "2")
 
         assert query == {
             "user_email": "user@test.com",
-            "playlist_id": 1,
-            "version_id": 2,
+            "playlist_id": "1",
+            "version_id": "2",
         }
 
     @pytest.mark.asyncio
@@ -217,8 +217,8 @@ class TestMongoDBStorageProvider:
             {
                 "_id": "abc123",
                 "user_email": "user1@test.com",
-                "playlist_id": 1,
-                "version_id": 2,
+                "playlist_id": "1",
+                "version_id": "2",
                 "content": "Note 1",
                 "created_at": now,
                 "updated_at": now,
@@ -226,8 +226,8 @@ class TestMongoDBStorageProvider:
             {
                 "_id": "def456",
                 "user_email": "user2@test.com",
-                "playlist_id": 1,
-                "version_id": 2,
+                "playlist_id": "1",
+                "version_id": "2",
                 "content": "Note 2",
                 "created_at": now,
                 "updated_at": now,
@@ -248,13 +248,13 @@ class TestMongoDBStorageProvider:
         mock_db.draft_notes = mock_collection
         provider._client = mock_client
 
-        result = await provider.get_draft_notes_for_version(1, 2)
+        result = await provider.get_draft_notes_for_version("1", "2")
 
         assert len(result) == 2
         assert result[0].content == "Note 1"
         assert result[1].content == "Note 2"
         mock_collection.find.assert_called_once_with(
-            {"playlist_id": 1, "version_id": 2}
+            {"playlist_id": "1", "version_id": "2"}
         )
 
     @pytest.mark.asyncio
@@ -266,8 +266,8 @@ class TestMongoDBStorageProvider:
         doc = {
             "_id": "abc123",
             "user_email": "user@test.com",
-            "playlist_id": 1,
-            "version_id": 2,
+            "playlist_id": "1",
+            "version_id": "2",
             "content": "Test content",
             "created_at": now,
             "updated_at": now,
@@ -312,8 +312,8 @@ class TestMongoDBStorageProvider:
         result_doc = {
             "_id": "abc123",
             "user_email": "user@test.com",
-            "playlist_id": 1,
-            "version_id": 2,
+            "playlist_id": "1",
+            "version_id": "2",
             "content": "Updated content",
             "created_at": now,
             "updated_at": now,
@@ -343,11 +343,11 @@ class TestMongoDBStorageProvider:
         result_doc = {
             "_id": "abc123",
             "user_email": "user@test.com",
-            "playlist_id": 1,
-            "version_id": 2,
+            "playlist_id": "1",
+            "version_id": "2",
             "content": "New content",
             "published": False,
-            "published_note_id": 500,  # Should be preserved
+            "published_note_id": "500",  # Should be preserved
             "created_at": now,
             "updated_at": now,
         }
@@ -367,7 +367,7 @@ class TestMongoDBStorageProvider:
         # Verify returned object has the field
         assert result.content == "New content"
         assert result.published is False
-        assert result.published_note_id == 500
+        assert result.published_note_id == "500"
 
         # Verify the update call used $set correctly (partial update)
         mock_collection.find_one_and_update.assert_called_once()
@@ -423,7 +423,7 @@ class TestMongoDBStorageProvider:
 
         doc = {
             "_id": "abc123",
-            "playlist_id": 1,
+            "playlist_id": "1",
             "meeting_id": "abc-123",
             "platform": "google_meet",
         }
@@ -464,7 +464,7 @@ class TestMongoDBStorageProvider:
 
         doc = {
             "_id": "abc123",
-            "playlist_id": 1,
+            "playlist_id": "1",
             "meeting_id": "abc-123",
             "platform": "google_meet",
         }
@@ -480,7 +480,7 @@ class TestMongoDBStorageProvider:
         result = await provider.get_playlist_metadata_by_meeting_id("abc-123")
 
         assert result is not None
-        assert result.playlist_id == 1
+        assert result.playlist_id == "1"
 
     @pytest.mark.asyncio
     async def test_get_playlist_metadata_by_meeting_id_not_found(self, provider):
@@ -505,7 +505,7 @@ class TestMongoDBStorageProvider:
 
         result_doc = {
             "_id": "abc123",
-            "playlist_id": 1,
+            "playlist_id": "1",
             "meeting_id": "abc-123",
             "platform": "google_meet",
         }
@@ -534,13 +534,13 @@ class TestMongoDBStorageProvider:
 
         existing_doc = {
             "_id": "abc123",
-            "playlist_id": 1,
+            "playlist_id": "1",
             "transcription_paused": True,
         }
 
         result_doc = {
             "_id": "abc123",
-            "playlist_id": 1,
+            "playlist_id": "1",
             "transcription_paused": False,
             "transcription_resumed_at": datetime.now(timezone.utc),
         }
@@ -570,13 +570,13 @@ class TestMongoDBStorageProvider:
 
         existing_doc = {
             "_id": "abc123",
-            "playlist_id": 1,
+            "playlist_id": "1",
             "transcription_paused": False,
         }
 
         result_doc = {
             "_id": "abc123",
-            "playlist_id": 1,
+            "playlist_id": "1",
             "transcription_paused": False,
         }
 
@@ -641,8 +641,8 @@ class TestMongoDBStorageProvider:
         result_doc = {
             "_id": "abc123",
             "segment_id": "seg-1",
-            "playlist_id": 1,
-            "version_id": 2,
+            "playlist_id": "1",
+            "version_id": "2",
             "text": "Hello",
             "speaker": "John",
             "absolute_start_time": "2024-01-01T00:00:00Z",
@@ -680,15 +680,15 @@ class TestMongoDBStorageProvider:
         existing_doc = {
             "_id": "abc123",
             "segment_id": "seg-1",
-            "playlist_id": 1,
-            "version_id": 2,
+            "playlist_id": "1",
+            "version_id": "2",
             "text": "Old text",
         }
         result_doc = {
             "_id": "abc123",
             "segment_id": "seg-1",
-            "playlist_id": 1,
-            "version_id": 2,
+            "playlist_id": "1",
+            "version_id": "2",
             "text": "Updated text",
             "speaker": "John",
             "absolute_start_time": "2024-01-01T00:00:00Z",
@@ -727,8 +727,8 @@ class TestMongoDBStorageProvider:
             {
                 "_id": "abc123",
                 "segment_id": "seg-1",
-                "playlist_id": 1,
-                "version_id": 2,
+                "playlist_id": "1",
+                "version_id": "2",
                 "text": "Hello",
                 "speaker": "John",
                 "absolute_start_time": "2024-01-01T00:00:00Z",
@@ -739,8 +739,8 @@ class TestMongoDBStorageProvider:
             {
                 "_id": "def456",
                 "segment_id": "seg-2",
-                "playlist_id": 1,
-                "version_id": 2,
+                "playlist_id": "1",
+                "version_id": "2",
                 "text": "World",
                 "speaker": "Jane",
                 "absolute_start_time": "2024-01-01T00:00:01Z",

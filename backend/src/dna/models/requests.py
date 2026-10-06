@@ -9,7 +9,7 @@ class EntityLink(BaseModel):
     """Reference to an existing entity for linking."""
 
     type: str = Field(description="Entity type (e.g., 'Version', 'Playlist', 'Shot')")
-    id: int = Field(description="Entity ID")
+    id: str = Field(description="Entity ID")
 
 
 class CreateNoteRequest(BaseModel):
@@ -18,7 +18,7 @@ class CreateNoteRequest(BaseModel):
     subject: str = Field(description="Note subject line")
     content: Optional[str] = Field(default=None, description="Note body content")
     project: dict[str, Any] = Field(
-        description="Project reference (e.g., {'type': 'Project', 'id': 85})"
+        description="Project reference (e.g., {'type': 'Project', 'id': '85'})"
     )
     note_links: Optional[list[EntityLink]] = Field(
         default=None, description="Entities to link this note to"
@@ -47,8 +47,8 @@ class FindRequest(BaseModel):
 class GenerateNoteRequest(BaseModel):
     """Request model for generating an AI note suggestion."""
 
-    playlist_id: int = Field(description="Playlist ID")
-    version_id: int = Field(description="Version ID")
+    playlist_id: str = Field(description="Playlist ID")
+    version_id: str = Field(description="Version ID")
     user_email: str = Field(description="User email address")
     additional_instructions: Optional[str] = Field(
         default=None,
@@ -71,7 +71,7 @@ class SearchRequest(BaseModel):
     entity_types: list[str] = Field(
         description="Entity types to search: user, shot, asset, version, task, playlist"
     )
-    project_id: Optional[int] = Field(
+    project_id: Optional[str] = Field(
         default=None,
         description="Scope results to a specific project (recommended for non-user entities)",
     )
@@ -84,7 +84,7 @@ class SearchResult(BaseModel):
     """Lightweight entity representation for search results."""
 
     type: str = Field(description="Entity type (e.g., 'User', 'Shot', 'Asset')")
-    id: int = Field(description="Entity ID")
+    id: str = Field(description="Entity ID")
     name: str = Field(description="Entity name")
     description: Optional[str] = Field(
         default=None, description="Entity description (for shots/assets/versions)"

@@ -14,8 +14,8 @@ export interface DNAEvent<T = unknown> {
 
 export interface SegmentEventPayload {
   segment_id: string;
-  playlist_id: number;
-  version_id: number;
+  playlist_id: string;
+  version_id: string;
   text: string;
   speaker?: string;
   absolute_start_time: string;
@@ -25,7 +25,7 @@ export interface SegmentEventPayload {
 export interface BotStatusEventPayload {
   platform: string;
   meeting_id: string;
-  playlist_id?: number;
+  playlist_id?: string;
   status: string;
   message?: string;
   recovered?: boolean;
@@ -248,7 +248,7 @@ export class DNAEventClient {
 
   subscribeToSegmentEvents(
     callback: EventCallback<SegmentEventPayload>,
-    filter?: { playlistId?: number; versionId?: number }
+    filter?: { playlistId?: string; versionId?: string }
   ): () => void {
     const filteredCallback = (event: DNAEvent<SegmentEventPayload>) => {
       const payload = event.payload;

@@ -12,13 +12,13 @@ export interface LocalDraftNote {
   versionStatus: string;
   published: boolean;
   edited: boolean;
-  publishedNoteId: number | null;
+  publishedNoteId: string | null;
   attachmentIds: string[];
 }
 
 export interface UseDraftNoteParams {
-  playlistId: number | null | undefined;
-  versionId: number | null | undefined;
+  playlistId: string | null | undefined;
+  versionId: string | null | undefined;
   userEmail: string | null | undefined;
   currentVersion?: SearchResult | null;
   submitter?: SearchResult | null;
@@ -178,11 +178,9 @@ export function useDraftNote({
             return [
               ...old,
               {
-                id: -1,
                 _id: 'temp_id',
                 version_id: versionId!,
                 playlist_id: playlistId!,
-                user_id: -1,
                 user_email: userEmail!,
                 content: data.content ?? '',
                 subject: data.subject ?? '',
@@ -193,6 +191,7 @@ export function useDraftNote({
                 published: false,
                 edited: data.edited ?? false,
                 published_note_id: null,
+                attachment_ids: [],
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               },
@@ -231,8 +230,8 @@ export function useDraftNote({
   });
 
   const lastContextRef = useRef<{
-    playlistId?: number | null;
-    versionId?: number | null;
+    playlistId?: string | null;
+    versionId?: string | null;
     userEmail?: string | null;
   }>({});
 

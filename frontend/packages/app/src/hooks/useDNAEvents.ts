@@ -56,8 +56,8 @@ export function useConnectionStatus(): {
 export function useSegmentEvents(
   callback: EventCallback<SegmentEventPayload>,
   options: UseDNAEventsOptions & {
-    playlistId?: number | null;
-    versionId?: number | null;
+    playlistId?: string | null;
+    versionId?: string | null;
   } = {}
 ): void {
   const client = useEventClient();

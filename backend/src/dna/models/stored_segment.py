@@ -11,8 +11,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 def generate_segment_id(
-    playlist_id: int,
-    version_id: int,
+    playlist_id: str,
+    version_id: str,
     absolute_start_time: str,
 ) -> str:
     """Generate a unique segment ID based on version and start time.
@@ -50,8 +50,8 @@ class StoredSegment(BaseModel):
 
     id: str = Field(alias="_id")
     segment_id: str = Field(..., description="Unique segment ID")
-    playlist_id: int
-    version_id: int
+    playlist_id: str
+    version_id: str
     text: str
     speaker: Optional[str] = None
     language: Optional[str] = None

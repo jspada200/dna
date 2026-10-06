@@ -40,11 +40,10 @@ function createWrapper() {
 }
 
 const mockDraftNote: DraftNote = {
-  id: 1,
   _id: 'abc123',
   user_email: 'test@example.com',
-  playlist_id: 1,
-  version_id: 2,
+  playlist_id: "1",
+  version_id: "2",
   content: 'Test content',
   subject: 'Test subject',
   to: 'recipient@example.com',
@@ -54,6 +53,7 @@ const mockDraftNote: DraftNote = {
   published: false,
   edited: false,
   published_note_id: null,
+  attachment_ids: [],
   updated_at: '2025-01-15T00:00:00Z',
   created_at: '2025-01-15T00:00:00Z',
 };
@@ -85,8 +85,8 @@ describe('useDraftNote', () => {
     const { result } = renderHook(
       () =>
         useDraftNote({
-          playlistId: 1,
-          versionId: 2,
+          playlistId: "1",
+          versionId: "2",
           userEmail: 'test@example.com',
         }),
       { wrapper: createWrapper() }
@@ -97,8 +97,8 @@ describe('useDraftNote', () => {
     });
 
     expect(mockedApiHandler.getDraftNote).toHaveBeenCalledWith({
-      playlistId: 1,
-      versionId: 2,
+      playlistId: "1",
+      versionId: "2",
       userEmail: 'test@example.com',
     });
 
@@ -122,8 +122,8 @@ describe('useDraftNote', () => {
     const { result } = renderHook(
       () =>
         useDraftNote({
-          playlistId: 1,
-          versionId: 2,
+          playlistId: "1",
+          versionId: "2",
           userEmail: 'test@example.com',
         }),
       { wrapper: createWrapper() }
@@ -158,8 +158,8 @@ describe('useDraftNote', () => {
     const { result } = renderHook(
       () =>
         useDraftNote({
-          playlistId: 1,
-          versionId: 2,
+          playlistId: "1",
+          versionId: "2",
           userEmail: 'test@example.com',
         }),
       { wrapper: createWrapper() }
@@ -187,8 +187,8 @@ describe('useDraftNote', () => {
     const { result } = renderHook(
       () =>
         useDraftNote({
-          playlistId: 1,
-          versionId: 2,
+          playlistId: "1",
+          versionId: "2",
           userEmail: 'test@example.com',
         }),
       { wrapper: createWrapper() }
@@ -210,8 +210,8 @@ describe('useDraftNote', () => {
     );
 
     expect(mockedApiHandler.upsertDraftNote).toHaveBeenCalledWith({
-      playlistId: 1,
-      versionId: 2,
+      playlistId: "1",
+      versionId: "2",
       userEmail: 'test@example.com',
       data: {
         content: 'New content',
@@ -232,8 +232,8 @@ describe('useDraftNote', () => {
     const { result } = renderHook(
       () =>
         useDraftNote({
-          playlistId: 1,
-          versionId: 2,
+          playlistId: "1",
+          versionId: "2",
           userEmail: 'test@example.com',
         }),
       { wrapper: createWrapper() }
@@ -262,8 +262,8 @@ describe('useDraftNote', () => {
 
     await waitFor(() => {
       expect(mockedApiHandler.deleteDraftNote).toHaveBeenCalledWith({
-        playlistId: 1,
-        versionId: 2,
+        playlistId: "1",
+        versionId: "2",
         userEmail: 'test@example.com',
       });
     });

@@ -17,17 +17,17 @@ class StorageProviderBase:
     """Abstract base class for storage providers."""
 
     async def get_draft_notes_for_version(
-        self, playlist_id: int, version_id: int
+        self, playlist_id: str, version_id: str
     ) -> list["DraftNote"]:
         """Get all draft notes for a playlist/version (all users)."""
         raise NotImplementedError()
 
-    async def get_draft_notes_for_playlist(self, playlist_id: int) -> list["DraftNote"]:
+    async def get_draft_notes_for_playlist(self, playlist_id: str) -> list["DraftNote"]:
         """Get all draft notes for a playlist (all users, all versions)."""
         raise NotImplementedError()
 
     async def get_draft_note(
-        self, user_email: str, playlist_id: int, version_id: int
+        self, user_email: str, playlist_id: str, version_id: str
     ) -> Optional["DraftNote"]:
         """Get a draft note by composite key (user_email, playlist_id, version_id)."""
         raise NotImplementedError()
@@ -35,8 +35,8 @@ class StorageProviderBase:
     async def upsert_draft_note(
         self,
         user_email: str,
-        playlist_id: int,
-        version_id: int,
+        playlist_id: str,
+        version_id: str,
         data: "DraftNoteUpdate",
     ) -> "DraftNote":
         """Create or update a draft note."""
@@ -45,21 +45,21 @@ class StorageProviderBase:
     async def upsert_published_note(
         self,
         user_email: str,
-        playlist_id: int,
-        version_id: int,
+        playlist_id: str,
+        version_id: str,
         data: "DraftNoteUpdate",
     ) -> "DraftNote":
         """Upsert a published note (sync from ShotGrid)."""
         raise NotImplementedError()
 
     async def delete_draft_note(
-        self, user_email: str, playlist_id: int, version_id: int
+        self, user_email: str, playlist_id: str, version_id: str
     ) -> bool:
         """Delete a draft note. Returns True if deleted."""
         raise NotImplementedError()
 
     async def get_playlist_metadata(
-        self, playlist_id: int
+        self, playlist_id: str
     ) -> Optional["PlaylistMetadata"]:
         """Get playlist metadata by playlist ID."""
         raise NotImplementedError()
@@ -71,19 +71,19 @@ class StorageProviderBase:
         raise NotImplementedError()
 
     async def upsert_playlist_metadata(
-        self, playlist_id: int, data: "PlaylistMetadataUpdate"
+        self, playlist_id: str, data: "PlaylistMetadataUpdate"
     ) -> "PlaylistMetadata":
         """Create or update playlist metadata."""
         raise NotImplementedError()
 
-    async def delete_playlist_metadata(self, playlist_id: int) -> bool:
+    async def delete_playlist_metadata(self, playlist_id: str) -> bool:
         """Delete playlist metadata. Returns True if deleted."""
         raise NotImplementedError()
 
     async def upsert_segment(
         self,
-        playlist_id: int,
-        version_id: int,
+        playlist_id: str,
+        version_id: str,
         segment_id: str,
         data: "StoredSegmentCreate",
     ) -> tuple["StoredSegment", bool]:
@@ -91,7 +91,7 @@ class StorageProviderBase:
         raise NotImplementedError()
 
     async def get_segments_for_version(
-        self, playlist_id: int, version_id: int
+        self, playlist_id: str, version_id: str
     ) -> list["StoredSegment"]:
         """Get all segments for a version, ordered by start time."""
         raise NotImplementedError()

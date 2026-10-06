@@ -153,7 +153,7 @@ class TestShotgridProviderRefactor:
 
         # Execute
         note_id = provider.publish_note(
-            version_id=101,
+            version_id="101",
             content="Test content",
             subject="Test subject",
             to_users=[],
@@ -161,7 +161,7 @@ class TestShotgridProviderRefactor:
             links=[],
         )
 
-        assert note_id == 200
+        assert note_id == "200"
         mock_sg_instance.create.assert_called_once()
         call_args = mock_sg_instance.create.call_args
         assert call_args[0][0] == "Note"
@@ -183,7 +183,7 @@ class TestShotgridProviderRefactor:
         ]
 
         note_id = provider.publish_note(
-            version_id=101,
+            version_id="101",
             content="Check",
             subject="Check",
             to_users=[],
@@ -191,7 +191,7 @@ class TestShotgridProviderRefactor:
             links=[],
         )
 
-        assert note_id == 999
+        assert note_id == "999"
         mock_sg_instance.create.assert_not_called()
 
     def test_publish_note_with_author(self, provider, mock_shotgun):
@@ -223,7 +223,7 @@ class TestShotgridProviderRefactor:
             # We want to verify that create is called on the NEW instance
 
             note_id = provider.publish_note(
-                version_id=101,
+                version_id="101",
                 content="C",
                 subject="S",
                 to_users=[],
@@ -267,7 +267,7 @@ class TestShotgridProviderRefactor:
                 match="Author not found in ShotGrid: unknown@example.com",
             ):
                 provider.publish_note(
-                    version_id=101,
+                    version_id="101",
                     content="Test",
                     subject="Test",
                     to_users=[],

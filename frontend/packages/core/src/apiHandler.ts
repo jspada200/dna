@@ -138,13 +138,17 @@ class ApiHandler {
   async getPlaylistsForProject(
     params: GetPlaylistsForProjectParams
   ): Promise<Playlist[]> {
-    return this.get<Playlist[]>(`/projects/${params.projectId}/playlists`);
+    return this.get<Playlist[]>(
+      `/projects/${encodeURIComponent(params.projectId)}/playlists`
+    );
   }
 
   async getVersionsForPlaylist(
     params: GetVersionsForPlaylistParams
   ): Promise<Version[]> {
-    return this.get<Version[]>(`/playlists/${params.playlistId}/versions`);
+    return this.get<Version[]>(
+      `/playlists/${encodeURIComponent(params.playlistId)}/versions`
+    );
   }
 
   async getUserByEmail(params: GetUserByEmailParams): Promise<DNAUser> {
@@ -153,26 +157,26 @@ class ApiHandler {
 
   async getDraftNote(params: GetDraftNoteParams): Promise<DraftNote | null> {
     return this.get<DraftNote | null>(
-      `/playlists/${params.playlistId}/versions/${params.versionId}/draft-notes/${encodeURIComponent(params.userEmail)}`
+      `/playlists/${encodeURIComponent(params.playlistId)}/versions/${encodeURIComponent(params.versionId)}/draft-notes/${encodeURIComponent(params.userEmail)}`
     );
   }
 
   async upsertDraftNote(params: UpsertDraftNoteParams): Promise<DraftNote> {
     return this.put<DraftNote>(
-      `/playlists/${params.playlistId}/versions/${params.versionId}/draft-notes/${encodeURIComponent(params.userEmail)}`,
+      `/playlists/${encodeURIComponent(params.playlistId)}/versions/${encodeURIComponent(params.versionId)}/draft-notes/${encodeURIComponent(params.userEmail)}`,
       params.data
     );
   }
 
   async deleteDraftNote(params: DeleteDraftNoteParams): Promise<boolean> {
     return this.delete<boolean>(
-      `/playlists/${params.playlistId}/versions/${params.versionId}/draft-notes/${encodeURIComponent(params.userEmail)}`
+      `/playlists/${encodeURIComponent(params.playlistId)}/versions/${encodeURIComponent(params.versionId)}/draft-notes/${encodeURIComponent(params.userEmail)}`
     );
   }
 
   async getAllDraftNotes(params: GetAllDraftNotesParams): Promise<DraftNote[]> {
     return this.get<DraftNote[]>(
-      `/playlists/${params.playlistId}/versions/${params.versionId}/draft-notes`
+      `/playlists/${encodeURIComponent(params.playlistId)}/versions/${encodeURIComponent(params.versionId)}/draft-notes`
     );
   }
 
@@ -180,7 +184,7 @@ class ApiHandler {
     params: GetPlaylistMetadataParams
   ): Promise<PlaylistMetadata | null> {
     return this.get<PlaylistMetadata | null>(
-      `/playlists/${params.playlistId}/metadata`
+      `/playlists/${encodeURIComponent(params.playlistId)}/metadata`
     );
   }
 
@@ -188,7 +192,7 @@ class ApiHandler {
     params: UpsertPlaylistMetadataParams
   ): Promise<PlaylistMetadata> {
     return this.put<PlaylistMetadata>(
-      `/playlists/${params.playlistId}/metadata`,
+      `/playlists/${encodeURIComponent(params.playlistId)}/metadata`,
       params.data
     );
   }
@@ -196,7 +200,9 @@ class ApiHandler {
   async deletePlaylistMetadata(
     params: DeletePlaylistMetadataParams
   ): Promise<boolean> {
-    return this.delete<boolean>(`/playlists/${params.playlistId}/metadata`);
+    return this.delete<boolean>(
+      `/playlists/${encodeURIComponent(params.playlistId)}/metadata`
+    );
   }
 
   async dispatchBot(params: DispatchBotParams): Promise<BotSession> {
@@ -225,7 +231,7 @@ class ApiHandler {
     params: GetSegmentsParams
   ): Promise<StoredSegment[]> {
     return this.get<StoredSegment[]>(
-      `/transcription/segments/${params.playlistId}/${params.versionId}`
+      `/transcription/segments/${encodeURIComponent(params.playlistId)}/${encodeURIComponent(params.versionId)}`
     );
   }
 
@@ -275,18 +281,20 @@ class ApiHandler {
     params: GetVersionStatusesParams
   ): Promise<StatusOption[]> {
     const queryParams = params.projectId
-      ? `?project_id=${params.projectId}`
+      ? `?project_id=${encodeURIComponent(params.projectId)}`
       : '';
     return this.get<StatusOption[]>(`/version-statuses${queryParams}`);
   }
 
-  async getPlaylistDraftNotes(playlistId: number): Promise<DraftNote[]> {
-    return this.get<DraftNote[]>(`/playlists/${playlistId}/draft-notes`);
+  async getPlaylistDraftNotes(playlistId: string): Promise<DraftNote[]> {
+    return this.get<DraftNote[]>(
+      `/playlists/${encodeURIComponent(playlistId)}/draft-notes`
+    );
   }
 
   async publishNotes(params: PublishNotesParams): Promise<PublishNotesResponse> {
     return this.post<PublishNotesResponse>(
-      `/playlists/${params.playlistId}/publish-notes`,
+      `/playlists/${encodeURIComponent(params.playlistId)}/publish-notes`,
       params.request
     );
   }
