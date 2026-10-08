@@ -71,22 +71,55 @@ safe_copy() {
     ok "$(basename "$src") → $(basename "$dst")"
 }
 
-# In-place sed replacement: replace every occurrence of KEY=<anything> with KEY=VALUE.
-# Uses a backup suffix then deletes it, which works on both macOS and Linux.
+# Docker Compose interpolates $VAR and ${VAR} in environment values. A literal
+# dollar sign in a secret has to be written as $$.
+escape_compose_value() {
+    local value="$1"
+    printf '%s' "${value//\$/\$\$}"
+}
+
+# Replace `- KEY=...` environment entries. Comments that mention KEY= are left
+# alone so a value cannot truncate the rest of the line.
 set_env_var() {
     local key="$1" value="$2" file="$3"
-    sed -i.bak "s|${key}=.*|${key}=${value}|g" "$file"
-    rm -f "${file}.bak"
+    local escaped
+    escaped="$(escape_compose_value "$value")"
+    python3 - "$file" "$key" "$escaped" <<'PYEOF'
+import sys
+
+path, key, value = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(path) as f:
+    lines = f.readlines()
+
+prefix = f"{key}="
+changed = False
+for i, line in enumerate(lines):
+    stripped = line.lstrip()
+    if not stripped.startswith("- "):
+        continue
+    body = stripped[2:]
+    if not body.startswith(prefix):
+        continue
+    indent = line[: len(line) - len(stripped)]
+    lines[i] = f"{indent}- {prefix}{value}\n"
+    changed = True
+
+if changed:
+    with open(path, "w") as f:
+        f.writelines(lines)
+PYEOF
 }
 
 # Set KEY=VALUE in a compose environment block, appending if the key is absent.
 ensure_env_var() {
     local key="$1" value="$2" file="$3"
-    if grep -qF "${key}=" "$file" 2>/dev/null; then
+    if grep -qE "^[[:space:]]*-[[:space:]]*${key}=" "$file" 2>/dev/null; then
         set_env_var "$key" "$value" "$file"
         return
     fi
-    python3 - "$file" "$key" "$value" <<'PYEOF'
+    local escaped
+    escaped="$(escape_compose_value "$value")"
+    python3 - "$file" "$key" "$escaped" <<'PYEOF'
 import sys
 
 path, key, value = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -243,6 +276,7 @@ configure_llm() {
             if [[ -n "$anthropic_key" ]]; then
                 # The example file has an OPENAI_API_KEY line; replace it with
                 # the Anthropic key and insert LLM_PROVIDER=anthropic above it.
+                anthropic_key="$(escape_compose_value "$anthropic_key")"
                 python3 - "$BACKEND_DIR/docker-compose.local.yml" "$anthropic_key" <<'PYEOF'
 import sys
 
@@ -272,6 +306,7 @@ PYEOF
             if [[ -n "$gemini_key" ]]; then
                 # The example file has an OPENAI_API_KEY line; replace it with
                 # the Gemini key and insert LLM_PROVIDER=gemini above it.
+                gemini_key="$(escape_compose_value "$gemini_key")"
                 python3 - "$BACKEND_DIR/docker-compose.local.yml" "$gemini_key" <<'PYEOF'
 import sys
 
@@ -328,6 +363,9 @@ PYEOF
                 needs_extra_hosts=true
             fi
 
+            custom_url="$(escape_compose_value "$custom_url")"
+            custom_model="$(escape_compose_value "$custom_model")"
+            custom_api_key="$(escape_compose_value "$custom_api_key")"
             python3 - "$BACKEND_DIR/docker-compose.local.yml" "$custom_url" "$custom_model" "$custom_api_key" "$needs_extra_hosts" <<'PYEOF'
 import sys
 
