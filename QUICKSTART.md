@@ -75,8 +75,6 @@ cp packages/app/.env.example packages/app/.env
 
 Edit `backend/docker-compose.local.yml` and set your LLM credentials. The bootstrap script writes these values for you when you provide a key interactively.
 
-**Production tracking (ShotGrid):** Entity IDs are strings. The ShotGrid provider translates ShotGrid's integer IDs to strings. To run without a ShotGrid seat, set **`PRODTRACK_PROVIDER=mock`** in `docker-compose.local.yml`. The mock provider uses read-only SQLite with pre-seeded data. To use real ShotGrid, set `PRODTRACK_PROVIDER=shotgrid` (or leave it unset) and add `SHOTGRID_URL`, `SHOTGRID_SCRIPT_NAME`, and `SHOTGRID_API_KEY`. See [Mock setup](#mock-production-tracking-setup) below for how to refresh or customize the mock data.
-
 **OpenAI (default):** requires `OPENAI_API_KEY`; optional `OPENAI_MODEL` and `OPENAI_TIMEOUT`
 
 ```yaml
