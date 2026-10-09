@@ -689,13 +689,13 @@ describe('ApiHandler', () => {
       });
 
       const result = await api.publishTranscript({
-        playlistId: 42,
-        request: { version_id: 101 },
+        playlistId: '42',
+        request: { version_id: '101' },
       });
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
         '/playlists/42/publish-transcript',
-        { version_id: 101 },
+        { version_id: '101' },
         undefined
       );
       expect(result.outcome).toBe('created');
@@ -746,8 +746,8 @@ describe('ApiHandler', () => {
       });
 
       const results = await api.runQCChecks({
-        playlistId: 1,
-        versionId: 2,
+        playlistId: '1',
+        versionId: '2',
         userEmail: 'u@x.com',
       });
       expect(results).toHaveLength(1);

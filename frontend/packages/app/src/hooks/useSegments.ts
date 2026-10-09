@@ -101,7 +101,7 @@ export function useSegments({
   const { data, isLoading, isError, error } = useQuery<StoredSegment[], Error>({
     queryKey,
     queryFn: async ({ queryKey: qk }) => {
-      const [, qPlaylistId, qVersionId] = qk as [string, number, number];
+      const [, qPlaylistId, qVersionId] = qk as [string, string, string];
       const capturedKey = `${qPlaylistId ?? '-'}:${qVersionId ?? '-'}`;
       const rest = await apiHandler.getSegmentsForVersion({
         playlistId: qPlaylistId,

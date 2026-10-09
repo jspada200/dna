@@ -136,7 +136,7 @@ export function useDraftNote({
   const queryKey = ['draftNote', playlistId, versionId, userEmail];
 
   const applyPendingVersionStatus = useCallback(
-    (local: LocalDraftNote, currentVersionId: number): LocalDraftNote => {
+    (local: LocalDraftNote, currentVersionId: string): LocalDraftNote => {
       const pending = pendingStatusMutationRef.current;
       if (pending && pending.versionId === currentVersionId) {
         return { ...local, versionStatus: pending.status };

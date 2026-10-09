@@ -20,8 +20,8 @@ function draft(over: Partial<DraftNote> = {}): DraftNote {
   return {
     _id: 'n1',
     user_email: 'u@test.com',
-    playlist_id: 1,
-    version_id: 2,
+    playlist_id: '1',
+    version_id: '2',
     content: 'x',
     subject: 's',
     to: '',
@@ -64,7 +64,7 @@ describe('useNoteQCChecks', () => {
       () =>
         useNoteQCChecks({
           open: true,
-          playlistId: 10,
+          playlistId: '10',
           drafts: [draft()],
         }),
       { wrapper: wrapper(qc) }
@@ -72,8 +72,8 @@ describe('useNoteQCChecks', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(spy).toHaveBeenCalledWith({
-      playlistId: 10,
-      versionId: 2,
+      playlistId: '10',
+      versionId: '2',
       userEmail: 'u@test.com',
     });
     expect(result.current.results.n1?.length).toBe(1);
@@ -88,7 +88,7 @@ describe('useNoteQCChecks', () => {
       ({ drafts }: { drafts: DraftNote[] }) =>
         useNoteQCChecks({
           open: true,
-          playlistId: 10,
+          playlistId: '10',
           drafts,
         }),
       { wrapper: wrapper(qc), initialProps: { drafts: [base] } }
@@ -107,12 +107,12 @@ describe('useNoteQCChecks', () => {
       defaultOptions: { queries: { retry: false, gcTime: 0 } },
     });
     const d1 = draft({ _id: 'a', user_email: 'a@test.com' });
-    const d2 = draft({ _id: 'b', user_email: 'b@test.com', version_id: 2 });
+    const d2 = draft({ _id: 'b', user_email: 'b@test.com', version_id: '2' });
     const { result } = renderHook(
       () =>
         useNoteQCChecks({
           open: true,
-          playlistId: 10,
+          playlistId: '10',
           drafts: [d1, d2],
         }),
       { wrapper: wrapper(qc) }
@@ -126,8 +126,8 @@ describe('useNoteQCChecks', () => {
     });
     expect(spy).toHaveBeenCalledTimes(3);
     expect(spy).toHaveBeenLastCalledWith({
-      playlistId: 10,
-      versionId: 2,
+      playlistId: '10',
+      versionId: '2',
       userEmail: 'a@test.com',
     });
   });
@@ -159,12 +159,12 @@ describe('useNoteQCChecks', () => {
     });
 
     const d1 = draft({ _id: 'a', user_email: 'a@test.com' });
-    const d2 = draft({ _id: 'b', user_email: 'b@test.com', version_id: 3 });
+    const d2 = draft({ _id: 'b', user_email: 'b@test.com', version_id: '3' });
     const { result } = renderHook(
       () =>
         useNoteQCChecks({
           open: true,
-          playlistId: 10,
+          playlistId: '10',
           drafts: [d1, d2],
         }),
       { wrapper: wrapper(qc) }
@@ -199,7 +199,7 @@ describe('useNoteQCChecks', () => {
       ({ open }: { open: boolean }) =>
         useNoteQCChecks({
           open,
-          playlistId: 10,
+          playlistId: '10',
           drafts: [draft()],
         }),
       { wrapper: wrapper(qc), initialProps: { open: true } }

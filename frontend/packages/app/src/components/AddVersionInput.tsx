@@ -10,9 +10,9 @@ import { useEntitySearch } from '../hooks/useEntitySearch';
 export interface AddVersionInputProps {
   playlistId: string;
   /** Project ID for scoping the version search */
-  projectId?: number;
+  projectId?: string;
   /** Versions already in the playlist (hidden from results) */
-  existingVersionIds?: number[];
+  existingVersionIds?: string[];
   onClose: () => void;
   onVersionAdded?: (version: Version) => void;
 }

@@ -97,8 +97,8 @@ function validateActivationPayload(
 ): boolean {
   if (!payload) return false;
   if (
-    typeof payload.playlistId !== 'number' ||
-    !Number.isFinite(payload.playlistId)
+    typeof payload.playlistId !== 'string' ||
+    payload.playlistId.trim() === ''
   ) {
     return false;
   }

@@ -567,7 +567,7 @@ function VersionStatusRow({
   onValueChange,
   onCheckedChange,
 }: {
-  projectId?: number;
+  projectId?: string;
   currentStatus?: string;
   value: string;
   checked: boolean;

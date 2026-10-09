@@ -15,7 +15,7 @@ function draftsIdentityFingerprint(drafts: DraftNote[]): string {
   return [...drafts]
     .map(
       (d) =>
-        `${String(d._id)}\0${String(d.user_email).toLowerCase()}\0${Number(d.version_id)}`
+        `${String(d._id)}\0${String(d.user_email).toLowerCase()}\0${String(d.version_id)}`
     )
     .sort((a, b) => a.localeCompare(b))
     .join('|');

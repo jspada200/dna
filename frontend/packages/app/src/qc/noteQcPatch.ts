@@ -79,7 +79,7 @@ function normalizeLinksFromPayload(raw: unknown): DraftNoteLink[] | null {
     if ('entity_type' in item || 'entity_id' in item) {
       links.push({
         entity_type: String(item.entity_type ?? ''),
-        entity_id: Number(item.entity_id),
+        entity_id: String(item.entity_id),
         entity_name:
           item.entity_name != null ? String(item.entity_name) : undefined,
       });
@@ -88,7 +88,7 @@ function normalizeLinksFromPayload(raw: unknown): DraftNoteLink[] | null {
     if ('type' in item && 'id' in item) {
       links.push({
         entity_type: String(item.type ?? ''),
-        entity_id: Number(item.id),
+        entity_id: String(item.id),
         entity_name: item.name != null ? String(item.name) : undefined,
       });
     }

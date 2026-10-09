@@ -61,8 +61,8 @@ function draft(over: Partial<DraftNote> = {}): DraftNote {
   return {
     _id: 'id1',
     user_email: 'me@test.com',
-    playlist_id: 1,
-    version_id: 10,
+    playlist_id: '1',
+    version_id: '10',
     content: 'body',
     subject: 'sub',
     to: '',
@@ -81,19 +81,19 @@ function draft(over: Partial<DraftNote> = {}): DraftNote {
 
 const version10: Version = {
   type: 'Version',
-  id: 10,
+  id: '10',
   name: 'tst_010_comp_v1',
   notes: [],
   thumbnail: 'https://example.com/thumb.jpg',
-  user: { id: 99, name: 'Cameron Target', type: 'HumanUser' },
+  user: { id: '99', name: 'Cameron Target', type: 'HumanUser' },
 };
 
 const version20: Version = {
   type: 'Version',
-  id: 20,
+  id: '20',
   name: 'tst_020_comp_v1',
   notes: [],
-  user: { id: 1, name: 'Artist', type: 'HumanUser' },
+  user: { id: '1', name: 'Artist', type: 'HumanUser' },
 };
 
 beforeEach(() => {
@@ -128,7 +128,7 @@ function renderDialog(
     <PublishNotesDialog
       open
       onClose={vi.fn()}
-      playlistId={100}
+      playlistId="100"
       userEmail="me@test.com"
       notes={[]}
       versions={[]}
@@ -141,8 +141,8 @@ describe('PublishNotesDialog', () => {
   it('renders one editor row per note in the notes list', () => {
     renderDialog({
       notes: [
-        draft({ _id: 'b', version_id: 10, published: false }),
-        draft({ _id: 'c', version_id: 10, published: true, edited: true }),
+        draft({ _id: 'b', version_id: '10', published: false }),
+        draft({ _id: 'c', version_id: '10', published: true, edited: true }),
       ],
       versions: [version10],
     });
@@ -160,12 +160,12 @@ describe('PublishNotesDialog', () => {
       notes: [
         draft({
           _id: 'empty',
-          version_id: 10,
+          version_id: '10',
           published: false,
           content: '   ',
           subject: 'Has subject',
         }),
-        draft({ _id: 'withBody', version_id: 10, content: 'Hello' }),
+        draft({ _id: 'withBody', version_id: '10', content: 'Hello' }),
       ],
       versions: [version10],
     });
@@ -176,9 +176,9 @@ describe('PublishNotesDialog', () => {
   it('renders one card per version and one row per draft', () => {
     renderDialog({
       notes: [
-        draft({ _id: 'a', version_id: 10, user_email: 'me@test.com' }),
-        draft({ _id: 'b', version_id: 10, user_email: 'other@test.com' }),
-        draft({ _id: 'c', version_id: 20, user_email: 'me@test.com' }),
+        draft({ _id: 'a', version_id: '10', user_email: 'me@test.com' }),
+        draft({ _id: 'b', version_id: '10', user_email: 'other@test.com' }),
+        draft({ _id: 'c', version_id: '20', user_email: 'me@test.com' }),
       ],
       versions: [version10, version20],
     });
@@ -191,8 +191,8 @@ describe('PublishNotesDialog', () => {
   it('calls useDraftNote with draft owner email for each row', () => {
     renderDialog({
       notes: [
-        draft({ _id: 'a', version_id: 10, user_email: 'me@test.com' }),
-        draft({ _id: 'b', version_id: 10, user_email: 'other@test.com' }),
+        draft({ _id: 'a', version_id: '10', user_email: 'me@test.com' }),
+        draft({ _id: 'b', version_id: '10', user_email: 'other@test.com' }),
       ],
       versions: [version10],
     });
@@ -206,8 +206,8 @@ describe('PublishNotesDialog', () => {
     const user = userEvent.setup();
     renderDialog({
       notes: [
-        draft({ _id: 'a', version_id: 10 }),
-        draft({ _id: 'b', version_id: 20 }),
+        draft({ _id: 'a', version_id: '10' }),
+        draft({ _id: 'b', version_id: '20' }),
       ],
       versions: [version10, version20],
     });
@@ -228,8 +228,8 @@ describe('PublishNotesDialog', () => {
     const user = userEvent.setup();
     renderDialog({
       notes: [
-        draft({ _id: 'a', version_id: 10, user_email: 'me@test.com' }),
-        draft({ _id: 'b', version_id: 10, user_email: 'other@test.com' }),
+        draft({ _id: 'a', version_id: '10', user_email: 'me@test.com' }),
+        draft({ _id: 'b', version_id: '10', user_email: 'other@test.com' }),
       ],
       versions: [version10],
     });
@@ -250,8 +250,8 @@ describe('PublishNotesDialog', () => {
     const user = userEvent.setup();
     renderDialog({
       notes: [
-        draft({ _id: 'a', version_id: 10, user_email: 'me@test.com' }),
-        draft({ _id: 'b', version_id: 10, user_email: 'other@test.com' }),
+        draft({ _id: 'a', version_id: '10', user_email: 'me@test.com' }),
+        draft({ _id: 'b', version_id: '10', user_email: 'other@test.com' }),
       ],
       versions: [version10],
     });
@@ -274,8 +274,8 @@ describe('PublishNotesDialog', () => {
     const user = userEvent.setup();
     renderDialog({
       notes: [
-        draft({ _id: 'a', version_id: 10, user_email: 'me@test.com' }),
-        draft({ _id: 'b', version_id: 10, user_email: 'other@test.com' }),
+        draft({ _id: 'a', version_id: '10', user_email: 'me@test.com' }),
+        draft({ _id: 'b', version_id: '10', user_email: 'other@test.com' }),
       ],
       versions: [version10],
     });
@@ -299,8 +299,8 @@ describe('PublishNotesDialog', () => {
     const user = userEvent.setup();
     renderDialog({
       notes: [
-        draft({ _id: 'a', version_id: 10, user_email: 'me@test.com' }),
-        draft({ _id: 'b', version_id: 10, user_email: 'other@test.com' }),
+        draft({ _id: 'a', version_id: '10', user_email: 'me@test.com' }),
+        draft({ _id: 'b', version_id: '10', user_email: 'other@test.com' }),
       ],
       versions: [version10],
     });
@@ -311,10 +311,10 @@ describe('PublishNotesDialog', () => {
     await user.click(screen.getByRole('button', { name: /Publish selected/i }));
 
     expect(mockPublishNotes).toHaveBeenCalledWith({
-      playlistId: 100,
+      playlistId: '100',
       request: {
         user_email: 'me@test.com',
-        targets: [{ user_email: 'other@test.com', version_id: 10 }],
+        targets: [{ user_email: 'other@test.com', version_id: '10' }],
       },
     });
   });
@@ -324,7 +324,7 @@ describe('PublishNotesDialog', () => {
     const flushA = vi.fn(async () => {});
     const flushB = vi.fn(async () => {});
     mockedUseDraftNote.mockImplementation((opts) => {
-      const flush = opts?.versionId === 10 ? flushA : flushB;
+      const flush = opts?.versionId === '10' ? flushA : flushB;
       return {
         draftNote: {
           content: '',
@@ -350,8 +350,8 @@ describe('PublishNotesDialog', () => {
 
     renderDialog({
       notes: [
-        draft({ _id: 'a', version_id: 10 }),
-        draft({ _id: 'b', version_id: 20 }),
+        draft({ _id: 'a', version_id: '10' }),
+        draft({ _id: 'b', version_id: '20' }),
       ],
       versions: [version10, version20],
     });

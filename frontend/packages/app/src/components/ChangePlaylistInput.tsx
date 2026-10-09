@@ -9,7 +9,7 @@ import { apiHandler, useGetPlaylistsForProject } from '../api';
 export interface ChangePlaylistInputProps {
   projectId: string;
   /** Current playlist (hidden from results) */
-  currentPlaylistId?: number;
+  currentPlaylistId?: string;
   onSelect: (playlist: Playlist) => void;
   onClose: () => void;
 }

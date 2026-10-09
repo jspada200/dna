@@ -154,8 +154,8 @@ describe('noteQcPatch', () => {
     const embedded = JSON.stringify({
       content: '@[briana J](user:484) This is looking great!',
       subject: '',
-      to: JSON.stringify([{ type: 'User', id: 17, name: 'Artist 3' }]),
-      cc: JSON.stringify([{ type: 'User', id: 484, name: 'briana J' }]),
+      to: JSON.stringify([{ type: 'User', id: '17', name: 'Artist 3' }]),
+      cc: JSON.stringify([{ type: 'User', id: '484', name: 'briana J' }]),
     });
     const r = result({ check_id: 'q', note_suggestion: embedded });
     const n = normalizeQCResult(r);
@@ -163,10 +163,10 @@ describe('noteQcPatch', () => {
       '@[briana J](user:484) This is looking great!'
     );
     expect(n.attribute_suggestion?.to).toBe(
-      '[{"type":"User","id":17,"name":"Artist 3"}]'
+      '[{"type":"User","id":"17","name":"Artist 3"}]'
     );
     expect(n.attribute_suggestion?.cc).toBe(
-      '[{"type":"User","id":484,"name":"briana J"}]'
+      '[{"type":"User","id":"484","name":"briana J"}]'
     );
   });
 
@@ -180,11 +180,11 @@ describe('noteQcPatch', () => {
     };
     const embedded = JSON.stringify({
       content: body,
-      to: JSON.stringify([{ type: 'User', id: 17, name: 'Artist 3' }]),
+      to: JSON.stringify([{ type: 'User', id: '17', name: 'Artist 3' }]),
     });
     const p = buildLocalPatch(draft, result({ note_suggestion: embedded }));
     expect(p.content).toBeUndefined();
-    expect(p.to).toEqual([{ type: 'User', id: 17, name: 'Artist 3' }]);
+    expect(p.to).toEqual([{ type: 'User', id: '17', name: 'Artist 3' }]);
     expect(p.edited).toBe(true);
   });
 
@@ -192,13 +192,13 @@ describe('noteQcPatch', () => {
     const draft: LocalDraftNote = {
       ...baseDraft,
       content: 'keep',
-      to: [{ type: 'User', id: 1, name: 'A' }],
+      to: [{ type: 'User', id: '1', name: 'A' }],
     };
     const embedded = JSON.stringify({
       content: 'keep',
       to: JSON.stringify([
-        { type: 'User', id: 1, name: 'A' },
-        { type: 'User', id: 2, name: 'B' },
+        { type: 'User', id: '1', name: 'A' },
+        { type: 'User', id: '2', name: 'B' },
       ]),
     });
     const rows = getQCPreviewRows(draft, result({ note_suggestion: embedded }));
