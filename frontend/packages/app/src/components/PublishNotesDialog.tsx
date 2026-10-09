@@ -288,9 +288,7 @@ function fallbackVersion(versionId: string): Version {
     type: 'Version',
     id: versionId,
     name:
-      versionId === SCRATCH_VERSION_ID
-        ? 'SCRATCH PAD'
-        : `Version ${versionId}`,
+      versionId === SCRATCH_VERSION_ID ? 'SCRATCH PAD' : `Version ${versionId}`,
     notes: [],
   };
 }

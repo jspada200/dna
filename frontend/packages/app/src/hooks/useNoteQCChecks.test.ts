@@ -8,7 +8,11 @@ import { apiHandler } from '../api';
 
 function wrapper(queryClient: QueryClient) {
   return function W({ children }: { children: ReactNode }) {
-    return createElement(QueryClientProvider, { client: queryClient }, children);
+    return createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      children
+    );
   };
 }
 
@@ -132,12 +136,14 @@ describe('useNoteQCChecks', () => {
     const qc = new QueryClient({
       defaultOptions: { queries: { retry: false, gcTime: 0 } },
     });
-    let resolveFirst: (value: Awaited<ReturnType<typeof apiHandler.runQCChecks>>) => void;
-    const firstPromise = new Promise<Awaited<ReturnType<typeof apiHandler.runQCChecks>>>(
-      (resolve) => {
-        resolveFirst = resolve;
-      }
-    );
+    let resolveFirst: (
+      value: Awaited<ReturnType<typeof apiHandler.runQCChecks>>
+    ) => void;
+    const firstPromise = new Promise<
+      Awaited<ReturnType<typeof apiHandler.runQCChecks>>
+    >((resolve) => {
+      resolveFirst = resolve;
+    });
     spy.mockImplementation(({ userEmail }) => {
       if (userEmail === 'a@test.com') {
         return firstPromise;

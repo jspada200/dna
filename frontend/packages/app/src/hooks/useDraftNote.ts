@@ -177,8 +177,13 @@ export function useDraftNote({
     onMutate: async ({ data }) => {
       await queryClient.cancelQueries({ queryKey: ['draftNotes', playlistId] });
       await queryClient.cancelQueries({ queryKey });
-      const previousDraftNotes = queryClient.getQueryData<DraftNote[]>(['draftNotes', playlistId]);
-      const previousDraftNote = queryClient.getQueryData<DraftNote | null>(queryKey);
+      const previousDraftNotes = queryClient.getQueryData<DraftNote[]>([
+        'draftNotes',
+        playlistId,
+      ]);
+      const previousDraftNote = queryClient.getQueryData<DraftNote | null>(
+        queryKey
+      );
 
       const patchDraftNote = (note: DraftNote): DraftNote => ({
         ...note,
@@ -193,50 +198,55 @@ export function useDraftNote({
       });
 
       if (previousDraftNotes) {
-        queryClient.setQueryData<DraftNote[]>(['draftNotes', playlistId], (old) => {
-          if (!old) return old;
-          // Match the owner too: this cache holds every user's drafts for the
-          // playlist, so version_id alone can patch someone else's row.
-          const index = old.findIndex(
-            (n) => n.version_id === versionId && n.user_email === userEmail
-          );
-          if (index !== -1) {
-            const updated = [...old];
-            updated[index] = {
-              ...updated[index],
-              content: data.content ?? updated[index].content,
-              subject: data.subject ?? updated[index].subject,
-              to: data.to ?? updated[index].to,
-              cc: data.cc ?? updated[index].cc,
-              version_status: data.version_status ?? updated[index].version_status,
-              edited: data.edited ?? updated[index].edited,
-              attachment_ids: data.attachment_ids ?? updated[index].attachment_ids,
-            };
-            return updated;
-          } else {
-            return [
-              ...old,
-              {
-                _id: 'temp_id',
-                version_id: versionId!,
-                playlist_id: playlistId!,
-                user_email: userEmail!,
-                content: data.content ?? '',
-                subject: data.subject ?? '',
-                to: data.to ?? '',
-                cc: data.cc ?? '',
-                links: data.links ?? [],
-                version_status: data.version_status ?? '',
-                published: false,
-                edited: data.edited ?? false,
-                published_note_id: null,
-                attachment_ids: [],
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              },
-            ];
+        queryClient.setQueryData<DraftNote[]>(
+          ['draftNotes', playlistId],
+          (old) => {
+            if (!old) return old;
+            // Match the owner too: this cache holds every user's drafts for the
+            // playlist, so version_id alone can patch someone else's row.
+            const index = old.findIndex(
+              (n) => n.version_id === versionId && n.user_email === userEmail
+            );
+            if (index !== -1) {
+              const updated = [...old];
+              updated[index] = {
+                ...updated[index],
+                content: data.content ?? updated[index].content,
+                subject: data.subject ?? updated[index].subject,
+                to: data.to ?? updated[index].to,
+                cc: data.cc ?? updated[index].cc,
+                version_status:
+                  data.version_status ?? updated[index].version_status,
+                edited: data.edited ?? updated[index].edited,
+                attachment_ids:
+                  data.attachment_ids ?? updated[index].attachment_ids,
+              };
+              return updated;
+            } else {
+              return [
+                ...old,
+                {
+                  _id: 'temp_id',
+                  version_id: versionId!,
+                  playlist_id: playlistId!,
+                  user_email: userEmail!,
+                  content: data.content ?? '',
+                  subject: data.subject ?? '',
+                  to: data.to ?? '',
+                  cc: data.cc ?? '',
+                  links: data.links ?? [],
+                  version_status: data.version_status ?? '',
+                  published: false,
+                  edited: data.edited ?? false,
+                  published_note_id: null,
+                  attachment_ids: [],
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                },
+              ];
+            }
           }
-        });
+        );
       }
 
       queryClient.setQueryData<DraftNote | null>(queryKey, (old) => {
@@ -276,7 +286,10 @@ export function useDraftNote({
     },
     onError: (_err, _variables, context) => {
       if (context?.previousDraftNotes) {
-        queryClient.setQueryData(['draftNotes', playlistId], context.previousDraftNotes);
+        queryClient.setQueryData(
+          ['draftNotes', playlistId],
+          context.previousDraftNotes
+        );
       }
       if (context) {
         queryClient.setQueryData(queryKey, context.previousDraftNote);
@@ -413,10 +426,20 @@ export function useDraftNote({
         });
       } else if (!isLoading) {
         // Loading finished with no server draft — initialise empty if still null
-        setLocalDraft((prev) => prev ?? createEmptyDraft(currentVersion, submitter));
+        setLocalDraft(
+          (prev) => prev ?? createEmptyDraft(currentVersion, submitter)
+        );
       }
     }
-  }, [serverDraft, isEnabled, isLoading, playlistId, versionId, userEmail, applyPendingVersionStatus]);
+  }, [
+    serverDraft,
+    isEnabled,
+    isLoading,
+    playlistId,
+    versionId,
+    userEmail,
+    applyPendingVersionStatus,
+  ]);
 
   useEffect(() => {
     const flushPending = () => {
@@ -463,9 +486,15 @@ export function useDraftNote({
 
         let isEdited = base.edited;
 
-        const meaningfulFields: (keyof LocalDraftNote)[] = ['content', 'subject', 'to', 'cc'];
-        const hasMeaningfulChange = meaningfulFields.some(field =>
-          updates[field] !== undefined && updates[field] !== base[field]
+        const meaningfulFields: (keyof LocalDraftNote)[] = [
+          'content',
+          'subject',
+          'to',
+          'cc',
+        ];
+        const hasMeaningfulChange = meaningfulFields.some(
+          (field) =>
+            updates[field] !== undefined && updates[field] !== base[field]
         );
 
         if (hasMeaningfulChange) {
